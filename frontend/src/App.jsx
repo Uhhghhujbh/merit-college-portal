@@ -170,6 +170,15 @@ const Router = () => {
     return <LandingPage navigate={navigate} />;
   }
 
+  // ADMIN ROUTE (MUST BE CHECKED BEFORE OTHER ROUTES)
+  if (currentPath === '/xaxaxaxadmin') {
+    if (!AdminDashboard) {
+      console.error('AdminDashboard component not found');
+      return <PageUnderConstruction navigate={navigate} componentName="Admin Dashboard" />;
+    }
+    return <AdminDashboard navigate={navigate} />;
+  }
+
   if (currentPath === '/auth' || currentPath.startsWith('/auth?')) {
     if (!AuthPage) {
       console.error('AuthPage component not found');
