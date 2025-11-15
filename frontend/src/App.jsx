@@ -194,36 +194,36 @@ const AuthProvider = ({ children }) => {
   );
 };
 
-// Lazy load components with error boundaries
-const ComponentLoader = ({ component: Component, navigate, ...props }) => {
-  const [error, setError] = useState(null);
+// // Lazy load components with error boundaries
+// const ComponentLoader = ({ component: Component, navigate, ...props }) => {
+//   const [error, setError] = useState(null);
 
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="text-center max-w-md">
-          <h1 className="text-6xl mb-4">⚠️</h1>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Component Error</h2>
-          <p className="text-gray-600 mb-2">Failed to load component</p>
-          <p className="text-sm text-red-600 mb-6">{error.message}</p>
-          <button
-            onClick={() => navigate('/')}
-            className="px-6 py-3 bg-gray-900 text-white rounded-lg font-semibold hover:bg-gray-800 transition"
-          >
-            Go to Homepage
-          </button>
-        </div>
-      </div>
-    );
-  }
+//   if (error) {
+//     return (
+//       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+//         <div className="text-center max-w-md">
+//           <h1 className="text-6xl mb-4">⚠️</h1>
+//           <h2 className="text-2xl font-bold text-gray-900 mb-2">Component Error</h2>
+//           <p className="text-gray-600 mb-2">Failed to load component</p>
+//           <p className="text-sm text-red-600 mb-6">{error.message}</p>
+//           <button
+//             onClick={() => navigate('/')}
+//             className="px-6 py-3 bg-gray-900 text-white rounded-lg font-semibold hover:bg-gray-800 transition"
+//           >
+//             Go to Homepage
+//           </button>
+//         </div>
+//       </div>
+//     );
+//   }
 
-  try {
-    return <Component navigate={navigate} {...props} />;
-  } catch (err) {
-    setError(err);
-    return null;
-  }
-};
+//   try {
+//     return <Component navigate={navigate} {...props} />;
+//   } catch (err) {
+//     setError(err);
+//     return null;
+//   }
+// };
 
 // Router Component
 const Router = () => {
