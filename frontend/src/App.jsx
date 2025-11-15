@@ -1,152 +1,3 @@
-// import React, { useState, useEffect } from 'react';
-
-// // Components
-// import LandingPage from './components/shared/LandingPage';
-// import AuthPage from './components/auth/AuthPage';
-// import GuestPage from './components/guest/GuestPage';
-// import StudentRegistrationForm from './components/student/StudentRegistrationForm';
-// import StudentDashboard from './components/student/StudentDashboard';
-// import StaffRegistrationForm from './components/staff/StaffRegistrationForm';
-// import StaffDashboard from './components/staff/StaffDashboard';
-// import AdminDashboard from './components/admin/AdminDashboard';
-// import ParentDashboard from './components/parent/ParentDashboard';
-// import AdmissionLetter from './components/shared/AdmissionLetter';
-
-// // Auth Context
-// const AuthContext = React.createContext(null);
-
-// export const useAuth = () => {
-//   const context = React.useContext(AuthContext);
-//   if (!context) throw new Error('useAuth must be used within AuthProvider');
-//   return context;
-// };
-
-// const AuthProvider = ({ children }) => {
-//   const [user, setUser] = useState(null);
-//   const [loading, setLoading] = useState(true);
-
-//   useEffect(() => {
-//     const storedUser = sessionStorage.getItem('meritUser');
-//     const token = sessionStorage.getItem('meritToken');
-//     if (storedUser && token) {
-//       setUser(JSON.parse(storedUser));
-//     }
-//     setLoading(false);
-//   }, []);
-
-//   const login = (userData, token) => {
-//     setUser(userData);
-//     sessionStorage.setItem('meritUser', JSON.stringify(userData));
-//     sessionStorage.setItem('meritToken', token);
-//   };
-
-//   const logout = () => {
-//     setUser(null);
-//     sessionStorage.clear();
-//   };
-
-//   return (
-//     <AuthContext.Provider value={{ user, login, logout, loading }}>
-//       {!loading && children}
-//     </AuthContext.Provider>
-//   );
-// };
-
-// // Router Component
-// const Router = () => {
-//   const [currentPath, setCurrentPath] = useState(window.location.pathname);
-
-//   useEffect(() => {
-//     const handleNavigation = () => {
-//       setCurrentPath(window.location.pathname);
-//     };
-
-//     window.addEventListener('popstate', handleNavigation);
-//     return () => window.removeEventListener('popstate', handleNavigation);
-//   }, []);
-
-//   const navigate = (path) => {
-//     window.history.pushState({}, '', path);
-//     setCurrentPath(path);
-//   };
-
-//   // Route matching
-//   if (currentPath === '/' || currentPath === '') {
-//     return <LandingPage navigate={navigate} />;
-//   }
-
-//   if (currentPath === '/auth' || currentPath.startsWith('/auth?')) {
-//     return <AuthPage navigate={navigate} />;
-//   }
-
-//   if (currentPath === '/guest') {
-//     return <GuestPage navigate={navigate} />;
-//   }
-
-//   if (currentPath === '/student/register') {
-//     return <StudentRegistrationForm navigate={navigate} />;
-//   }
-
-//   if (currentPath === '/student/dashboard') {
-//     return <StudentDashboard navigate={navigate} />;
-//   }
-
-//   if (currentPath === '/student/admission-letter') {
-//     return <AdmissionLetter navigate={navigate} />;
-//   }
-
-//   if (currentPath === '/staff/register') {
-//     return <StaffRegistrationForm navigate={navigate} />;
-//   }
-
-//   if (currentPath === '/staff/dashboard') {
-//     return <StaffDashboard navigate={navigate} />;
-//   }
-
-//   if (currentPath === '/parent/dashboard') {
-//     return <ParentDashboard navigate={navigate} />;
-//   }
-
-//   if (currentPath === '/xaxaxaxadmin') {
-//     return <AdminDashboard navigate={navigate} />;
-//   }
-
-//   // 404 - Page under construction
-//   return (
-//     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-//       <div className="text-center">
-//         <h1 className="text-6xl font-bold text-gray-900 mb-4">🚧</h1>
-//         <h2 className="text-2xl font-bold text-gray-900 mb-2">Page Under Construction</h2>
-//         <p className="text-gray-600 mb-6">This page is being built and will be available soon.</p>
-//         <button
-//           onClick={() => navigate('/')}
-//           className="px-6 py-3 bg-gray-900 text-white rounded-lg font-semibold hover:bg-gray-800 transition"
-//         >
-//           Go to Homepage
-//         </button>
-//       </div>
-//     </div>
-//   );
-// };
-
-// function App() {
-//   return (
-//     <AuthProvider>
-//       <Router />
-//     </AuthProvider>
-//   );
-// }
-
-// export default App;
-
-
-
-
-
-
-
-
-
 import React, { useState, useEffect } from 'react';
 
 // Auth Context
@@ -193,37 +44,6 @@ const AuthProvider = ({ children }) => {
     </AuthContext.Provider>
   );
 };
-
-// // Lazy load components with error boundaries
-// const ComponentLoader = ({ component: Component, navigate, ...props }) => {
-//   const [error, setError] = useState(null);
-
-//   if (error) {
-//     return (
-//       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-//         <div className="text-center max-w-md">
-//           <h1 className="text-6xl mb-4">⚠️</h1>
-//           <h2 className="text-2xl font-bold text-gray-900 mb-2">Component Error</h2>
-//           <p className="text-gray-600 mb-2">Failed to load component</p>
-//           <p className="text-sm text-red-600 mb-6">{error.message}</p>
-//           <button
-//             onClick={() => navigate('/')}
-//             className="px-6 py-3 bg-gray-900 text-white rounded-lg font-semibold hover:bg-gray-800 transition"
-//           >
-//             Go to Homepage
-//           </button>
-//         </div>
-//       </div>
-//     );
-//   }
-
-//   try {
-//     return <Component navigate={navigate} {...props} />;
-//   } catch (err) {
-//     setError(err);
-//     return null;
-//   }
-// };
 
 // Router Component
 const Router = () => {
@@ -340,20 +160,22 @@ const Router = () => {
   } = components;
 
   // Route matching with component existence check
-  // if (currentPath === '/' || currentPath === '') {
-  //   if (!LandingPage) {
-  //     console.error('LandingPage component not found');
-  //     return <PageUnderConstruction navigate={navigate} componentName="Landing Page" />;
-  //   }
-  //   return <ComponentLoader component={LandingPage} navigate={navigate} />;
-  // }
+  
+  // HOME PAGE / LANDING PAGE (FIXED!)
+  if (currentPath === '/' || currentPath === '') {
+    if (!LandingPage) {
+      console.error('LandingPage component not found');
+      return <PageUnderConstruction navigate={navigate} componentName="Landing Page" />;
+    }
+    return <LandingPage navigate={navigate} />;
+  }
 
   if (currentPath === '/auth' || currentPath.startsWith('/auth?')) {
     if (!AuthPage) {
       console.error('AuthPage component not found');
       return <PageUnderConstruction navigate={navigate} componentName="Auth Page" />;
     }
-    return <ComponentLoader component={AuthPage} navigate={navigate} />;
+    return <AuthPage navigate={navigate} />;
   }
 
   if (currentPath === '/guest') {
@@ -361,7 +183,7 @@ const Router = () => {
       console.error('GuestPage component not found');
       return <PageUnderConstruction navigate={navigate} componentName="Guest Page" />;
     }
-    return <ComponentLoader component={GuestPage} navigate={navigate} />;
+    return <GuestPage navigate={navigate} />;
   }
 
   if (currentPath === '/student/register') {
@@ -369,7 +191,7 @@ const Router = () => {
       console.error('StudentRegistrationForm component not found');
       return <PageUnderConstruction navigate={navigate} componentName="Student Registration" />;
     }
-    return <ComponentLoader component={StudentRegistrationForm} navigate={navigate} />;
+    return <StudentRegistrationForm navigate={navigate} />;
   }
 
   if (currentPath === '/student/dashboard') {
@@ -377,7 +199,7 @@ const Router = () => {
       console.error('StudentDashboard component not found');
       return <PageUnderConstruction navigate={navigate} componentName="Student Dashboard" />;
     }
-    return <ComponentLoader component={StudentDashboard} navigate={navigate} />;
+    return <StudentDashboard navigate={navigate} />;
   }
 
   if (currentPath === '/student/admission-letter') {
@@ -385,7 +207,7 @@ const Router = () => {
       console.error('AdmissionLetter component not found');
       return <PageUnderConstruction navigate={navigate} componentName="Admission Letter" />;
     }
-    return <ComponentLoader component={AdmissionLetter} navigate={navigate} />;
+    return <AdmissionLetter navigate={navigate} />;
   }
 
   if (currentPath === '/staff/register') {
@@ -393,7 +215,7 @@ const Router = () => {
       console.error('StaffRegistrationForm component not found');
       return <PageUnderConstruction navigate={navigate} componentName="Staff Registration" />;
     }
-    return <ComponentLoader component={StaffRegistrationForm} navigate={navigate} />;
+    return <StaffRegistrationForm navigate={navigate} />;
   }
 
   if (currentPath === '/staff/dashboard') {
@@ -401,7 +223,7 @@ const Router = () => {
       console.error('StaffDashboard component not found');
       return <PageUnderConstruction navigate={navigate} componentName="Staff Dashboard" />;
     }
-    return <ComponentLoader component={StaffDashboard} navigate={navigate} />;
+    return <StaffDashboard navigate={navigate} />;
   }
 
   if (currentPath === '/parent/dashboard') {
@@ -409,7 +231,7 @@ const Router = () => {
       console.error('ParentDashboard component not found');
       return <PageUnderConstruction navigate={navigate} componentName="Parent Dashboard" />;
     }
-    return <ComponentLoader component={ParentDashboard} navigate={navigate} />;
+    return <ParentDashboard navigate={navigate} />;
   }
 
   if (currentPath === '/xaxaxaxadmin') {
@@ -417,7 +239,7 @@ const Router = () => {
       console.error('AdminDashboard component not found');
       return <PageUnderConstruction navigate={navigate} componentName="Admin Dashboard" />;
     }
-    return <ComponentLoader component={AdminDashboard} navigate={navigate} />;
+    return <AdminDashboard navigate={navigate} />;
   }
 
   // 404 - Page not found
