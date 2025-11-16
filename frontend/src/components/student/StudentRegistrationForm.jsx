@@ -231,58 +231,68 @@ const StudentRegistrationForm = ({ navigate }) => {
     }
   };
 
-  const handleSubmit = async () => {
-    if (!validateStep3()) return;
+ const handleSubmit = async () => {
+  if (!validateStep3()) {
+    alert('Please accept terms and sign the form');
+    return;
+  }
 
-    setLoading(true);
+  setLoading(true);
 
-    try {
-      // Generate Student ID
-      const year = new Date().getFullYear().toString().slice(-2);
-      const random = Math.random().toString(36).substring(2, 5).toUpperCase();
-      const programmeCode = formData.programme === 'O-Level' ? 'O' : formData.programme === 'A-Level' ? 'A' : 'J';
-      const departmentCode = 'SCI';
-      const studentId = `MCAS/${departmentCode}/${year}/${random}/${programmeCode}`;
-
-      const registrationData = {
-        ...formData,
-        studentId,
-        registrationDate: new Date().toISOString(),
-        status: 'pending',
-        formFee: formData.programme === 'O-Level' ? 10000 : 25750
-      };
-
-      console.log('Registration Data:', registrationData);
-
-      // Store in sessionStorage
-      sessionStorage.setItem('pendingRegistration', JSON.stringify(registrationData));
-      
-      // Mock login user immediately after registration
-      const mockUser = {
-        id: studentId,
-        name: `${formData.surname} ${formData.lastName}`,
+  try {
+    // Prepare form data for backend
+    const registrationPayload = {
+      formData: {
+        surname: formData.surname,
+        middleName: formData.middleName,
+        lastName: formData.lastName,
+        gender: formData.gender,
+        dateOfBirth: formData.dateOfBirth,
+        stateOfOrigin: formData.stateOfOrigin,
+        lga: formData.lga,
+        permanentAddress: formData.permanentAddress,
+        parentsPhone: formData.parentsPhone,
+        studentPhone: formData.studentPhone,
         email: formData.email,
-        role: 'student',
-        status: 'pending'
-      };
-      
-      sessionStorage.setItem('meritUser', JSON.stringify(mockUser));
-      sessionStorage.setItem('meritToken', 'temp_token_' + Date.now());
+        programme: formData.programme,
+        subjects: formData.subjects,
+        university: formData.university,
+        course: formData.course,
+        polytechnic: formData.polytechnic,
+        collegeOfEducation: formData.collegeOfEducation,
+        signature: formData.signature,
+        location: formData.location
+      },
+      photo: formData.photoPreview // Base64 string
+    };
 
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
+    // Submit to backend
+    const response = await fetch('/api/students/register', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(registrationPayload)
+    });
 
-      alert(`Registration Successful!\n\nYour Student ID: ${studentId}\n\nPlease wait for admin validation within 7 days.\n\nForm Fee: ₦${registrationData.formFee.toLocaleString()}\n\nYou will now be redirected to your dashboard.`);
-      
-      // Redirect to student dashboard
-      navigate('/student/dashboard');
-    } catch (error) {
-      console.error('Registration error:', error);
-      alert('Registration failed. Please try again.');
-    } finally {
-      setLoading(false);
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Registration failed');
     }
-  };
+
+    const data = await response.json();
+
+    alert(`Registration Successful!\n\nYour Student ID: ${data.studentId}\n\nPlease wait for admin validation within 7 days.`);
+    
+    // Redirect to login page
+    navigate('/auth');
+  } catch (error) {
+    console.error('Registration error:', error);
+    alert(error.message || 'Registration failed. Please try again.');
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handlePrint = () => {
     window.print();
