@@ -4,9 +4,8 @@ import jwt from 'jsonwebtoken';
 
 export const studentLogin = async (req, res) => {
   try {
-    const { identifier, password } = req.body; // identifier can be email or studentId
+    const { identifier, password } = req.body;
 
-    // Check if student exists
     const { data: student, error } = await supabase
       .from('students')
       .select('*')
@@ -17,18 +16,15 @@ export const studentLogin = async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    // Verify password
     const validPassword = await bcrypt.compare(password, student.password);
     if (!validPassword) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    // Check if account is active
     if (student.status !== 'active') {
-      return res.status(403).json({ error: 'Account is not active. Please contact administration.' });
+      return res.status(403).json({ error: 'Account is not active. Please wait for admin validation.' });
     }
 
-    // Generate JWT
     const token = jwt.sign(
       { id: student.id, email: student.email, role: 'student' },
       process.env.JWT_SECRET,
@@ -50,11 +46,54 @@ export const studentLogin = async (req, res) => {
   }
 };
 
+export const staffLogin = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    const { data: staff, error } = await supabase
+      .from('staff')
+      .select('*')
+      .eq('email', email)
+      .single();
+
+    if (error || !staff) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    const validPassword = await bcrypt.compare(password, staff.password);
+    if (!validPassword) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    if (staff.status !== 'active') {
+      return res.status(403).json({ error: 'Account is not active' });
+    }
+
+    const token = jwt.sign(
+      { id: staff.id, email: staff.email, role: 'staff' },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    res.json({
+      token,
+      user: {
+        id: staff.staff_id,
+        name: staff.full_name,
+        email: staff.email,
+        role: 'staff'
+      }
+    });
+  } catch (error) {
+    console.error('Staff login error:', error);
+    res.status(500).json({ error: 'Login failed' });
+  }
+};
+
 export const parentLogin = async (req, res) => {
   try {
     const { studentId, surname } = req.body;
 
-    // Verify student exists and surname matches
     const { data: student, error } = await supabase
       .from('students')
       .select('*')
@@ -66,7 +105,6 @@ export const parentLogin = async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    // Generate JWT for parent
     const token = jwt.sign(
       { studentId: student.student_id, role: 'parent' },
       process.env.JWT_SECRET,
@@ -87,6 +125,7 @@ export const parentLogin = async (req, res) => {
   }
 };
 
+// ADMIN LOGIN - NO BCRYPT (uses plain text password)
 export const adminLogin = async (req, res) => {
   try {
     const { email, password, location } = req.body;
@@ -96,6 +135,7 @@ export const adminLogin = async (req, res) => {
       { email: 'olayayemi@gmail.com', password: 'Synthase1278' }
     ];
 
+    // Direct comparison for admin (no bcrypt)
     const admin = validAdmins.find(a => a.email === email && a.password === password);
 
     if (!admin) {
@@ -117,7 +157,13 @@ export const adminLogin = async (req, res) => {
       { expiresIn: '8h' }
     );
 
-    res.json({ token, admin: { email: admin.email } });
+    res.json({ 
+      token, 
+      user: { 
+        email: admin.email,
+        role: 'admin'
+      } 
+    });
   } catch (error) {
     console.error('Admin login error:', error);
     res.status(500).json({ error: 'Login failed' });
