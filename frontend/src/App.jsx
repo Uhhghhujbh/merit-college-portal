@@ -293,6 +293,8 @@
 import React, { useState, useEffect } from 'react';
 
 // Import all components directly (NOT dynamic imports - they cause issues)
+import React, { useState } from 'react';
+import WelcomeAnimation from './components/shared/WelcomeAnimation';
 import LandingPage from './components/shared/LandingPage';
 import AuthPage from './components/auth/AuthPage';
 import GuestPage from './components/guest/GuestPage';
@@ -435,7 +437,14 @@ const PageUnderConstruction = ({ navigate }) => (
   </div>
 );
 
+
 function App() {
+  const [showWelcome, setShowWelcome] = useState(true);
+
+  if (showWelcome) {
+    return <WelcomeAnimation onComplete={() => setShowWelcome(false)} />;
+  }
+
   return (
     <AuthProvider>
       <Router />
