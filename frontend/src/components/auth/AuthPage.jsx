@@ -91,63 +91,93 @@ const AuthPage = ({ navigate }) => {
   };
 
   const handleSubmit = async () => {
-    if (!validateForm()) return;
+  if (!validateForm()) return;
 
-    setLoading(true);
+  setLoading(true);
 
-    try {
-      if (isRegister) {
-        // Navigate to registration form
-        if (selectedRole === 'student') navigate('/student/register');
-        if (selectedRole === 'staff') navigate('/staff/register');
-        return;
+  try {
+    if (isRegister) {
+      // Navigate to registration form
+      if (selectedRole === 'student') {
+        navigate('/student/register');
+      } else if (selectedRole === 'staff') {
+        navigate('/staff/register');
       }
-
-      // Login
-      let endpoint = '';
-      let body = {};
-
-      if (selectedRole === 'parent') {
-        endpoint = '/api/auth/parent/login';
-        body = {
-          studentId: formData.studentId,
-          surname: formData.surname
-        };
-      } else {
-        endpoint = `/api/auth/${selectedRole}/login`;
-        body = {
-          email: formData.email,
-          password: formData.password
-        };
-      }
-
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Login failed');
-      }
-
-      const data = await response.json();
-      
-      // Store token and user data
-      login(data.user || data.student, data.token);
-      sessionStorage.setItem('meritToken', data.token);
-
-      // Navigate to appropriate dashboard
-      if (selectedRole === 'student') navigate('/student/dashboard');
-      if (selectedRole === 'staff') navigate('/staff/dashboard');
-      if (selectedRole === 'parent') navigate('/parent/dashboard');
-    } catch (error) {
-      alert(error.message);
-    } finally {
-      setLoading(false);
+      return;
     }
-  };
+
+    // Login logic
+    let endpoint = '';
+    let body = {};
+
+    if (selectedRole === 'parent') {
+      endpoint = '/api/auth/parent/login';
+      body = {
+        studentId: formData.studentId,
+        surname: formData.surname
+      };
+    } else if (selectedRole === 'admin') {
+      endpoint = '/api/auth/admin/login';
+      body = {
+        email: formData.email,
+        password: formData.password,
+        location: null // Can add geolocation here
+      };
+    } else {
+      // Student or Staff
+      endpoint = `/api/auth/${selectedRole}/login`;
+      body = {
+        identifier: formData.email, // Can be email or student ID
+        email: formData.email,
+        password: formData.password
+      };
+    }
+
+    console.log('Attempting login:', { endpoint, role: selectedRole });
+
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+
+    console.log('Response status:', response.status);
+
+    // Check if response is JSON
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      throw new Error('Server returned invalid response');
+    }
+
+    const data = await response.json();
+    console.log('Response data:', data);
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Login failed');
+    }
+
+    // Store token and user data
+    const userData = data.user || data.student || { email: data.email };
+    login(userData, data.token);
+
+    // Navigate to appropriate dashboard
+    if (selectedRole === 'student') {
+      console.log('Navigating to student dashboard');
+      navigate('/student/dashboard');
+    } else if (selectedRole === 'staff') {
+      navigate('/staff/dashboard');
+    } else if (selectedRole === 'parent') {
+      navigate('/parent/dashboard');
+    } else if (selectedRole === 'admin') {
+      navigate('/xaxaxaxadmin');
+    }
+  } catch (error) {
+    console.error('Login error:', error);
+    alert(error.message || 'Login failed. Please try again.');
+  } finally {
+    setLoading(false);
+  }
+};
 
   if (step === 'role') {
     return (
