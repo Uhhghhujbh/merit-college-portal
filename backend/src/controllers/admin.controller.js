@@ -1,4 +1,5 @@
 import { supabase } from '../config/supabase.js';
+import jwt from 'jsonwebtoken';
 
 export const getAllStudents = async (req, res) => {
   try {
