@@ -36,7 +36,11 @@ const WelcomeAnimation = ({ onComplete }) => {
         clearInterval(timer2);
         setTimeout(() => {
           setFadeOut(true);
-          setTimeout(onComplete, 1000);
+          setTimeout(() => {
+            if (onComplete && typeof onComplete === 'function') {
+              onComplete();
+            }
+          }, 1000);
         }, 2000);
       }
     }, 60);
@@ -45,7 +49,11 @@ const WelcomeAnimation = ({ onComplete }) => {
   }, [showSecond, onComplete]);
 
   return (
-    <div className={`fixed inset-0 bg-gradient-to-br from-gray-900 via-gray-800 to-black z-50 flex items-center justify-center transition-opacity duration-1000 ${fadeOut ? 'opacity-0' : 'opacity-100'}`}>
+    <div 
+      className={`fixed inset-0 bg-gradient-to-br from-gray-900 via-gray-800 to-black z-50 flex items-center justify-center transition-opacity duration-1000 ${
+        fadeOut ? 'opacity-0' : 'opacity-100'
+      }`}
+    >
       <div className="text-center px-4">
         <div className="mb-8">
           <div className="w-24 h-24 bg-white rounded-full mx-auto mb-6 flex items-center justify-center animate-pulse">
@@ -55,18 +63,18 @@ const WelcomeAnimation = ({ onComplete }) => {
 
         <h1 className="text-4xl md:text-6xl font-bold text-white mb-6 font-serif">
           {text1}
-          <span className="animate-pulse">|</span>
+          {text1.length < line1.length && <span className="animate-pulse">|</span>}
         </h1>
 
         {showSecond && (
           <p className="text-xl md:text-2xl text-gray-300 font-light animate-breathe">
             {text2}
-            <span className="animate-pulse">|</span>
+            {text2.length < line2.length && <span className="animate-pulse">|</span>}
           </p>
         )}
       </div>
 
-      <style jsx>{`
+      <style>{`
         @keyframes breathe {
           0%, 100% { opacity: 0.6; transform: scale(1); }
           50% { opacity: 1; transform: scale(1.02); }
