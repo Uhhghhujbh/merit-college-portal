@@ -67,96 +67,97 @@ const AuthPage = ({ navigate }) => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async () => {
-    if (!validateForm()) return;
+  // Updated handleSubmit in AuthPage.jsx
+const handleSubmit = async () => {
+  if (!validateForm()) return;
 
-    setLoading(true);
+  setLoading(true);
 
-    try {
-      if (isRegister) {
-        // ✅ REDIRECT TO REGISTRATION FORM
-        if (selectedRole === 'student') {
-          navigate('/student/register');
-        } else if (selectedRole === 'staff') {
-          navigate('/staff/register');
-        }
-        return;
-      }
+  try {
+    let endpoint = '';
+    let body = {};
 
-      // ✅ LOGIN LOGIC - PROPER API CALLS
-      let endpoint = '';
-      let body = {};
-
-      if (selectedRole === 'parent') {
-        endpoint = '/api/auth/parent/login';
-        body = {
-          studentId: formData.studentId,
-          surname: formData.surname
-        };
-      } else if (selectedRole === 'admin') {
-        endpoint = '/api/auth/admin/login';
-        body = {
-          email: formData.email,
-          password: formData.password,
-          location: null
-        };
-      } else {
-        endpoint = `/api/auth/${selectedRole}/login`;
-        body = {
-          identifier: formData.email,
-          email: formData.email,
-          password: formData.password
-        };
-      }
-
-      console.log('🔑 Attempting login:', { endpoint, role: selectedRole });
-
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-      });
-
-      console.log('📡 Response status:', response.status);
-
-      const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        throw new Error('Server returned invalid response');
-      }
-
-      const data = await response.json();
-      console.log('✅ Response data:', data);
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Login failed');
-      }
-
-      // ✅ STORE USER DATA & TOKEN
-      const userData = data.user || data.student || { email: data.email };
-      
-      sessionStorage.setItem('meritUser', JSON.stringify(userData));
-      sessionStorage.setItem('meritToken', data.token);
-
-      // ✅ NAVIGATE TO CORRECT DASHBOARD
-      console.log('🚀 Navigating to dashboard for role:', selectedRole);
-      
-      if (selectedRole === 'student') {
-        navigate('/student/dashboard');
-      } else if (selectedRole === 'staff') {
-        navigate('/staff/dashboard');
-      } else if (selectedRole === 'parent') {
-        navigate('/parent/dashboard');
-      } else if (selectedRole === 'admin') {
-        navigate('/xaxaxaxadmin');
-      }
-      
-    } catch (error) {
-      console.error('❌ Login error:', error);
-      alert(error.message || 'Login failed. Please try again.');
-    } finally {
-      setLoading(false);
+    if (selectedRole === 'parent') {
+      endpoint = '/api/auth/parent/login';
+      body = {
+        studentId: formData.studentId,
+        surname: formData.surname
+      };
+    } else if (selectedRole === 'admin') {
+      endpoint = '/api/auth/admin/login';
+      body = {
+        email: formData.email,
+        password: formData.password,
+        location: null
+      };
+    } else {
+      endpoint = `/api/auth/${selectedRole}/login`;
+      body = {
+        identifier: formData.email,
+        email: formData.email,
+        password: formData.password
+      };
     }
-  };
+
+    console.log('Login attempt:', { endpoint, role: selectedRole });
+
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify(body)
+    });
+
+    console.log('Response status:', response.status);
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Login failed' }));
+      throw new Error(errorData.error || `Login failed with status ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log('Login successful:', data);
+
+    // Store token and user data
+    const userData = data.user || data.student || { 
+      email: data.email, 
+      role: selectedRole,
+      ...data 
+    };
+
+    // Use consistent storage keys
+    const token = data.token;
+    sessionStorage.setItem('meritToken', token);
+    sessionStorage.setItem('meritUser', JSON.stringify(userData));
+
+    // Call context login
+    login(userData, token);
+
+    // Navigate to appropriate dashboard
+    const routes = {
+      student: '/student/dashboard',
+      staff: '/staff/dashboard',
+      parent: '/parent/dashboard',
+      admin: '/xaxaxaxadmin'
+    };
+
+    const targetRoute = routes[selectedRole];
+    if (targetRoute) {
+      console.log('Navigating to:', targetRoute);
+      navigate(targetRoute);
+    } else {
+      navigate('/');
+    }
+
+  } catch (error) {
+    console.error('Login error:', error);
+    alert(error.message || 'Login failed. Please check your credentials and try again.');
+  } finally {
+    setLoading(false);
+  }
+};
 
   if (step === 'role') {
     return (
