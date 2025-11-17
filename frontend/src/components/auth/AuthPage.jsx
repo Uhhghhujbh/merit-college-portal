@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { User, Users, UserCheck, Home, Mail, Phone, AlertCircle } from 'lucide-react';
-import { useAuth } from '../../App';
 
 const AuthPage = ({ navigate }) => {
   const [step, setStep] = useState('role');
@@ -15,10 +14,8 @@ const AuthPage = ({ navigate }) => {
     surname: ''
   });
   const [errors, setErrors] = useState({});
-  const { login } = useAuth();
 
   useEffect(() => {
-    // Check URL params for register mode
     const params = new URLSearchParams(window.location.search);
     if (params.get('register') === 'true') {
       setIsRegister(true);
@@ -26,30 +23,10 @@ const AuthPage = ({ navigate }) => {
   }, []);
 
   const roles = [
-    { 
-      id: 'student', 
-      icon: <User className="w-8 h-8" />, 
-      title: 'Student', 
-      desc: 'Access learning materials and exams' 
-    },
-    { 
-      id: 'staff', 
-      icon: <UserCheck className="w-8 h-8" />, 
-      title: 'Staff', 
-      desc: 'Manage classes and student progress' 
-    },
-    { 
-      id: 'parent', 
-      icon: <Users className="w-8 h-8" />, 
-      title: 'Parent', 
-      desc: "Monitor your child's performance" 
-    },
-    { 
-      id: 'guest', 
-      icon: <Home className="w-8 h-8" />, 
-      title: 'Guest', 
-      desc: 'Explore our services' 
-    }
+    { id: 'student', icon: <User className="w-8 h-8" />, title: 'Student', desc: 'Access learning materials and exams' },
+    { id: 'staff', icon: <UserCheck className="w-8 h-8" />, title: 'Staff', desc: 'Manage classes and student progress' },
+    { id: 'parent', icon: <Users className="w-8 h-8" />, title: 'Parent', desc: "Monitor your child's performance" },
+    { id: 'guest', icon: <Home className="w-8 h-8" />, title: 'Guest', desc: 'Explore our services' }
   ];
 
   const handleRoleSelect = (roleId) => {
@@ -91,93 +68,95 @@ const AuthPage = ({ navigate }) => {
   };
 
   const handleSubmit = async () => {
-  if (!validateForm()) return;
+    if (!validateForm()) return;
 
-  setLoading(true);
+    setLoading(true);
 
-  try {
-    if (isRegister) {
-      // Navigate to registration form
-      if (selectedRole === 'student') {
-        navigate('/student/register');
-      } else if (selectedRole === 'staff') {
-        navigate('/staff/register');
+    try {
+      if (isRegister) {
+        // ✅ REDIRECT TO REGISTRATION FORM
+        if (selectedRole === 'student') {
+          navigate('/student/register');
+        } else if (selectedRole === 'staff') {
+          navigate('/staff/register');
+        }
+        return;
       }
-      return;
+
+      // ✅ LOGIN LOGIC - PROPER API CALLS
+      let endpoint = '';
+      let body = {};
+
+      if (selectedRole === 'parent') {
+        endpoint = '/api/auth/parent/login';
+        body = {
+          studentId: formData.studentId,
+          surname: formData.surname
+        };
+      } else if (selectedRole === 'admin') {
+        endpoint = '/api/auth/admin/login';
+        body = {
+          email: formData.email,
+          password: formData.password,
+          location: null
+        };
+      } else {
+        endpoint = `/api/auth/${selectedRole}/login`;
+        body = {
+          identifier: formData.email,
+          email: formData.email,
+          password: formData.password
+        };
+      }
+
+      console.log('🔑 Attempting login:', { endpoint, role: selectedRole });
+
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+
+      console.log('📡 Response status:', response.status);
+
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error('Server returned invalid response');
+      }
+
+      const data = await response.json();
+      console.log('✅ Response data:', data);
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Login failed');
+      }
+
+      // ✅ STORE USER DATA & TOKEN
+      const userData = data.user || data.student || { email: data.email };
+      
+      sessionStorage.setItem('meritUser', JSON.stringify(userData));
+      sessionStorage.setItem('meritToken', data.token);
+
+      // ✅ NAVIGATE TO CORRECT DASHBOARD
+      console.log('🚀 Navigating to dashboard for role:', selectedRole);
+      
+      if (selectedRole === 'student') {
+        navigate('/student/dashboard');
+      } else if (selectedRole === 'staff') {
+        navigate('/staff/dashboard');
+      } else if (selectedRole === 'parent') {
+        navigate('/parent/dashboard');
+      } else if (selectedRole === 'admin') {
+        navigate('/xaxaxaxadmin');
+      }
+      
+    } catch (error) {
+      console.error('❌ Login error:', error);
+      alert(error.message || 'Login failed. Please try again.');
+    } finally {
+      setLoading(false);
     }
-
-    // Login logic
-    let endpoint = '';
-    let body = {};
-
-    if (selectedRole === 'parent') {
-      endpoint = '/api/auth/parent/login';
-      body = {
-        studentId: formData.studentId,
-        surname: formData.surname
-      };
-    } else if (selectedRole === 'admin') {
-      endpoint = '/api/auth/admin/login';
-      body = {
-        email: formData.email,
-        password: formData.password,
-        location: null // Can add geolocation here
-      };
-    } else {
-      // Student or Staff
-      endpoint = `/api/auth/${selectedRole}/login`;
-      body = {
-        identifier: formData.email, // Can be email or student ID
-        email: formData.email,
-        password: formData.password
-      };
-    }
-
-    console.log('Attempting login:', { endpoint, role: selectedRole });
-
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    });
-
-    console.log('Response status:', response.status);
-
-    // Check if response is JSON
-    const contentType = response.headers.get('content-type');
-    if (!contentType || !contentType.includes('application/json')) {
-      throw new Error('Server returned invalid response');
-    }
-
-    const data = await response.json();
-    console.log('Response data:', data);
-
-    if (!response.ok) {
-      throw new Error(data.error || 'Login failed');
-    }
-
-    // Store token and user data
-    const userData = data.user || data.student || { email: data.email };
-    login(userData, data.token);
-
-    // Navigate to appropriate dashboard
-    if (selectedRole === 'student') {
-      console.log('Navigating to student dashboard');
-      navigate('/student/dashboard');
-    } else if (selectedRole === 'staff') {
-      navigate('/staff/dashboard');
-    } else if (selectedRole === 'parent') {
-      navigate('/parent/dashboard');
-    } else if (selectedRole === 'admin') {
-      navigate('/xaxaxaxadmin');
-    }
-  } catch (error) {
-    console.error('Login error:', error);
-    alert(error.message || 'Login failed. Please try again.');
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   if (step === 'role') {
     return (
