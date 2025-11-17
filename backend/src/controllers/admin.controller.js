@@ -1,240 +1,162 @@
+// backend/src/controllers/auth.controller.js
 import { supabase } from '../config/supabase.js';
+import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
-export const getAllStudents = async (req, res) => {
+export const studentLogin = async (req, res) => {
   try {
-    const { data: students, error } = await supabase
+    const { identifier, email, password } = req.body;
+    const searchTerm = identifier || email;
+
+    console.log('Student login attempt:', { searchTerm });
+
+    // Search by email OR student_id
+    const { data: student, error } = await supabase
       .from('students')
       .select('*')
-      .order('registration_date', { ascending: false });
+      .or(`email.eq.${searchTerm},student_id.eq.${searchTerm}`)
+      .single();
 
-    if (error) throw error;
+    if (error || !student) {
+      console.error('Student not found:', error);
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
 
-    res.json(students || []);
+    // For testing: if no password set, auto-create one from email
+    if (!student.password) {
+      console.log('Student has no password, creating one...');
+      const hashedPassword = await bcrypt.hash(student.email, 10);
+      const { error: updateError } = await supabase
+        .from('students')
+        .update({ password: hashedPassword })
+        .eq('id', student.id);
+      
+      if (updateError) {
+        console.error('Password update error:', updateError);
+      }
+      student.password = hashedPassword;
+    }
+
+    const validPassword = await bcrypt.compare(password, student.password);
+    console.log('Password valid:', validPassword);
+
+    if (!validPassword) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    const token = jwt.sign(
+      { 
+        id: student.id, 
+        email: student.email, 
+        role: 'student', 
+        studentId: student.student_id 
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    console.log('Login successful, sending response');
+
+    return res.status(200).json({
+      token,
+      user: {
+        id: student.student_id,
+        name: student.full_name,
+        email: student.email,
+        role: 'student',
+        status: student.status
+      }
+    });
   } catch (error) {
-    console.error('Fetch students error:', error);
-    res.status(500).json({ error: 'Failed to fetch students' });
+    console.error('Login error:', error);
+    return res.status(500).json({ 
+      error: 'Login failed', 
+      details: error.message 
+    });
   }
 };
 
-export const getAllStaff = async (req, res) => {
+// Add missing imports for other login functions
+export const staffLogin = async (req, res) => {
   try {
+    const { email, password } = req.body;
+
     const { data: staff, error } = await supabase
       .from('staff')
       .select('*')
-      .order('created_at', { ascending: false });
+      .eq('email', email)
+      .single();
 
-    if (error) throw error;
+    if (error || !staff) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
 
-    res.json(staff || []);
-  } catch (error) {
-    console.error('Fetch staff error:', error);
-    res.status(500).json({ error: 'Failed to fetch staff' });
-  }
-};
+    const validPassword = await bcrypt.compare(password, staff.password);
+    if (!validPassword) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
 
-export const getStats = async (req, res) => {
-  try {
-    // Get student counts
-    const { count: totalStudents } = await supabase
-      .from('students')
-      .select('*', { count: 'exact', head: true });
-
-    const { count: pendingStudents } = await supabase
-      .from('students')
-      .select('*', { count: 'exact', head: true })
-      .eq('status', 'pending');
-
-    const { count: activeStudents } = await supabase
-      .from('students')
-      .select('*', { count: 'exact', head: true })
-      .eq('status', 'active');
-
-    const { count: suspendedStudents } = await supabase
-      .from('students')
-      .select('*', { count: 'exact', head: true })
-      .eq('status', 'suspended');
-
-    // Get staff counts
-    const { count: totalStaff } = await supabase
-      .from('staff')
-      .select('*', { count: 'exact', head: true });
-
-    const { count: activeStaff } = await supabase
-      .from('staff')
-      .select('*', { count: 'exact', head: true })
-      .eq('status', 'active');
-
-    // Calculate pending payments
-    const { count: pendingPayments } = await supabase
-      .from('students')
-      .select('*', { count: 'exact', head: true })
-      .eq('payment_status', 'unpaid');
-
-    // Mock revenue (you can calculate from actual payments later)
-    const totalRevenue = 3250000;
+    const token = jwt.sign(
+      { id: staff.id, email: staff.email, role: 'staff' },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
 
     res.json({
-      totalStudents: totalStudents || 0,
-      pendingStudents: pendingStudents || 0,
-      activeStudents: activeStudents || 0,
-      suspendedStudents: suspendedStudents || 0,
-      totalStaff: totalStaff || 0,
-      activeStaff: activeStaff || 0,
-      pendingPayments: pendingPayments || 0,
-      totalRevenue
+      token,
+      user: {
+        id: staff.staff_id,
+        name: staff.full_name,
+        email: staff.email,
+        role: 'staff'
+      }
     });
   } catch (error) {
-    console.error('Stats error:', error);
-    res.status(500).json({ error: 'Failed to fetch stats' });
+    console.error('Staff login error:', error);
+    res.status(500).json({ error: 'Login failed' });
   }
 };
 
-export const clockIn = async (req, res) => {
+export const adminLogin = async (req, res) => {
   try {
-    const { reason, location } = req.body;
-    const adminEmail = req.user.email;
+    const { email, password, location } = req.body;
 
-    const { data, error } = await supabase
-      .from('admin_logs')
-      .insert({
-        admin_email: adminEmail,
-        action: 'clock_in',
-        details: { reason },
-        location,
-        user_agent: req.headers['user-agent'],
-        timestamp: new Date().toISOString()
-      })
-      .select()
-      .single();
+    const validAdmins = [
+      { email: 'adewuyiayuba@gmail.com', password: 'Synthase1278' },
+      { email: 'olayayemi@gmail.com', password: 'Synthase1278' }
+    ];
 
-    if (error) throw error;
+    // Direct comparison for admin (no bcrypt)
+    const admin = validAdmins.find(a => a.email === email && a.password === password);
 
-    res.json({ message: 'Clocked in successfully', data });
-  } catch (error) {
-    console.error('Clock in error:', error);
-    res.status(500).json({ error: 'Clock in failed' });
-  }
-};
+    if (!admin) {
+      return res.status(401).json({ error: 'Invalid admin credentials' });
+    }
 
-export const validateStudent = async (req, res) => {
-  try {
-    const { studentId, status } = req.body;
-
-    const { data, error } = await supabase
-      .from('students')
-      .update({ status })
-      .eq('student_id', studentId)
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    // Log the action
+    // Log admin access
     await supabase.from('admin_logs').insert({
-      admin_email: req.user.email,
-      action: 'validate_student',
-      details: { studentId, status },
+      admin_email: email,
+      action: 'login',
+      location,
+      user_agent: req.headers['user-agent'],
       timestamp: new Date().toISOString()
     });
 
-    res.json({ message: 'Student status updated', data });
-  } catch (error) {
-    console.error('Validation error:', error);
-    res.status(500).json({ error: 'Validation failed' });
-  }
-};
+    const token = jwt.sign(
+      { email: admin.email, role: 'admin' },
+      process.env.JWT_SECRET,
+      { expiresIn: '8h' }
+    );
 
-export const suspendAccount = async (req, res) => {
-  try {
-    const { id, type } = req.body;
-    const table = type === 'student' ? 'students' : 'staff';
-    const idField = type === 'student' ? 'student_id' : 'staff_id';
-
-    const { data, error } = await supabase
-      .from(table)
-      .update({ status: 'suspended' })
-      .eq(idField, id)
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    // Log the action
-    await supabase.from('admin_logs').insert({
-      admin_email: req.user.email,
-      action: 'suspend_account',
-      details: { id, type },
-      timestamp: new Date().toISOString()
+    res.json({ 
+      token, 
+      user: { 
+        email: admin.email,
+        role: 'admin'
+      } 
     });
-
-    res.json({ message: `${type} suspended successfully`, data });
   } catch (error) {
-    console.error('Suspend error:', error);
-    res.status(500).json({ error: 'Suspend failed' });
-  }
-};
-
-export const deleteAccount = async (req, res) => {
-  try {
-    const { id, type } = req.body;
-    const table = type === 'student' ? 'students' : 'staff';
-    const idField = type === 'student' ? 'student_id' : 'staff_id';
-
-    const { error } = await supabase
-      .from(table)
-      .delete()
-      .eq(idField, id);
-
-    if (error) throw error;
-
-    // Log the action
-    await supabase.from('admin_logs').insert({
-      admin_email: req.user.email,
-      action: 'delete_account',
-      details: { id, type },
-      timestamp: new Date().toISOString()
-    });
-
-    res.json({ message: `${type} deleted successfully` });
-  } catch (error) {
-    console.error('Delete error:', error);
-    res.status(500).json({ error: 'Delete failed' });
-  }
-};
-
-export const generateStaffCode = async (req, res) => {
-  try {
-    const code = 'MRT' + Array.from({ length: 5 }, () => 
-      '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'[Math.floor(Math.random() * 36)]
-    ).join('');
-
-    const expiresAt = new Date();
-    expiresAt.setHours(expiresAt.getHours() + 6);
-
-    const { data, error } = await supabase
-      .from('verification_codes')
-      .insert({
-        code,
-        type: 'staff',
-        expires_at: expiresAt.toISOString()
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    // Log the action
-    await supabase.from('admin_logs').insert({
-      admin_email: req.user.email,
-      action: 'generate_staff_code',
-      details: { code },
-      timestamp: new Date().toISOString()
-    });
-
-    res.json({ code, expiresAt: data.expires_at });
-  } catch (error) {
-    console.error('Code generation error:', error);
-    res.status(500).json({ error: 'Failed to generate code' });
+    console.error('Admin login error:', error);
+    res.status(500).json({ error: 'Login failed' });
   }
 };
