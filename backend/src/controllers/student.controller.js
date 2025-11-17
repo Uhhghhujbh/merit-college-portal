@@ -1,9 +1,12 @@
 import { supabase, BUCKETS } from '../config/supabase.js';
 import bcrypt from 'bcryptjs';
 
+// ✅ REGISTER STUDENT - FIXED WITH PROPER RESPONSE
 export const registerStudent = async (req, res) => {
   try {
     const { formData, photo } = req.body;
+
+    console.log('📝 Registering student:', formData.email);
 
     // Generate Student ID
     const year = new Date().getFullYear().toString().slice(-2);
@@ -11,22 +14,32 @@ export const registerStudent = async (req, res) => {
     const programmeCode = formData.programme === 'O-Level' ? 'O' : 'A';
     const studentId = `MCAS/SCI/${year}/${random}/${programmeCode}`;
 
-    // Hash password
+    // Hash password (use email as initial password)
     const hashedPassword = await bcrypt.hash(formData.email, 10);
 
     // Upload photo to Supabase Storage
     let photoUrl = null;
     if (photo) {
-      const photoPath = `${studentId}_${Date.now()}.jpg`;
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from(BUCKETS.STUDENT_PHOTOS)
-        .upload(photoPath, photo);
+      try {
+        const photoPath = `${studentId}_${Date.now()}.jpg`;
+        const base64Data = photo.replace(/^data:image\/\w+;base64,/, '');
+        const buffer = Buffer.from(base64Data, 'base64');
 
-      if (!uploadError) {
-        const { data: urlData } = supabase.storage
+        const { data: uploadData, error: uploadError } = await supabase.storage
           .from(BUCKETS.STUDENT_PHOTOS)
-          .getPublicUrl(photoPath);
-        photoUrl = urlData.publicUrl;
+          .upload(photoPath, buffer, {
+            contentType: 'image/jpeg'
+          });
+
+        if (!uploadError) {
+          const { data: urlData } = supabase.storage
+            .from(BUCKETS.STUDENT_PHOTOS)
+            .getPublicUrl(photoPath);
+          photoUrl = urlData.publicUrl;
+        }
+      } catch (photoError) {
+        console.error('Photo upload error:', photoError);
+        // Continue without photo
       }
     }
 
@@ -39,28 +52,38 @@ export const registerStudent = async (req, res) => {
       phone: formData.studentPhone,
       parents_phone: formData.parentsPhone,
       programme: formData.programme,
-      department: 'Science', // Determine from subjects
+      department: 'Science',
       subjects: formData.subjects,
       photo_url: photoUrl,
-      status: 'pending', // Admin must validate
+      status: 'pending',
       password: hashedPassword,
       location: formData.location,
       registration_date: new Date().toISOString()
     }).select().single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('❌ Database error:', error);
+      throw error;
+    }
+
+    console.log('✅ Student registered:', studentId);
 
     res.status(201).json({
       message: 'Registration successful',
-      studentId,
-      status: 'pending'
+      studentId: studentId,
+      status: 'pending',
+      email: formData.email
     });
   } catch (error) {
-    console.error('Registration error:', error);
-    res.status(500).json({ error: 'Registration failed' });
+    console.error('❌ Registration error:', error);
+    res.status(500).json({ 
+      error: 'Registration failed', 
+      details: error.message 
+    });
   }
 };
 
+// ✅ GET STUDENT PROFILE - FIXED
 export const getStudentProfile = async (req, res) => {
   try {
     const { id } = req.params;
@@ -83,6 +106,7 @@ export const getStudentProfile = async (req, res) => {
   }
 };
 
+// ✅ UPDATE PASSWORD - FIXED
 export const updatePassword = async (req, res) => {
   try {
     const { studentId, currentPassword, newPassword } = req.body;
