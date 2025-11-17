@@ -231,104 +231,96 @@ const StudentRegistrationForm = ({ navigate }) => {
     }
   };
 
+// Updated handleSubmit in StudentRegistrationForm.jsx
 const handleSubmit = async () => {
-  if (!validateStep3()) {
-    alert('Please accept terms and sign the form');
+  if (!validateForm()) {
+    alert('Please fill all required fields and fix errors');
     return;
   }
 
   setLoading(true);
 
   try {
-    // Prepare form data for backend
-    const registrationPayload = {
-      formData: {
-        surname: formData.surname,
-        middleName: formData.middleName,
-        lastName: formData.lastName,
-        gender: formData.gender,
-        dateOfBirth: formData.dateOfBirth,
-        stateOfOrigin: formData.stateOfOrigin,
-        lga: formData.lga,
-        permanentAddress: formData.permanentAddress,
-        parentsPhone: formData.parentsPhone,
-        studentPhone: formData.studentPhone,
-        email: formData.email,
-        programme: formData.programme,
-        subjects: formData.subjects,
-        university: formData.university,
-        course: formData.course,
-        polytechnic: formData.polytechnic,
-        collegeOfEducation: formData.collegeOfEducation,
-        signature: formData.signature,
-        location: formData.location
-      },
-      photo: formData.photoPreview // Base64 string
-    };
+    const formDataToSend = new FormData();
+    
+    // Append all form data
+    Object.keys(formData).forEach(key => {
+      if (key === 'subjects') {
+        formDataToSend.append(key, JSON.stringify(formData[key]));
+      } else if (key === 'photo' && formData.photo) {
+        formDataToSend.append('photo', formData.photo);
+      } else {
+        formDataToSend.append(key, formData[key]);
+      }
+    });
 
-    console.log('📤 Submitting registration...');
+    console.log('Submitting registration...');
 
     const response = await fetch('/api/students/register', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(registrationPayload)
+      body: formDataToSend,
     });
 
+    const result = await response.json();
+
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Registration failed');
+      throw new Error(result.error || 'Registration failed');
     }
 
-    const data = await response.json();
+    console.log('Registration successful:', result);
 
-    console.log('✅ Registration successful:', data);
-
-    // ✅ CRITICAL FIX: Store data in sessionStorage AND navigate properly
-    const tempStudentData = {
-      studentId: data.studentId,
-      surname: formData.surname,
-      middleName: formData.middleName,
-      lastName: formData.lastName,
+    // Store registration data temporarily
+    const registrationData = {
+      studentId: result.studentId,
+      full_name: `${formData.surname} ${formData.middleName} ${formData.lastName}`.trim(),
       email: formData.email,
-      studentPhone: formData.studentPhone,
-      parentsPhone: formData.parentsPhone,
       programme: formData.programme,
-      subjects: formData.subjects,
-      status: 'pending',
+      status: result.status || 'pending',
       registrationDate: new Date().toISOString(),
-      photoPreview: formData.photoPreview
+      ...formData
     };
 
-    // Store for immediate dashboard access
-    sessionStorage.setItem('pendingRegistration', JSON.stringify(tempStudentData));
-    
-    // Store user session
-    sessionStorage.setItem('meritUser', JSON.stringify({
-      id: data.studentId,
-      name: `${formData.surname} ${formData.middleName} ${formData.lastName}`.trim(),
-      email: formData.email,
-      role: 'student',
-      status: 'pending'
-    }));
+    sessionStorage.setItem('pendingRegistration', JSON.stringify(registrationData));
 
-    // Create a temporary token for the session
-    sessionStorage.setItem('meritToken', 'temp_' + Date.now());
+    // Auto-login after registration
+    try {
+      const loginResponse = await fetch('/api/auth/student/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          identifier: formData.email,
+          password: formData.email // Using email as initial password
+        }),
+      });
 
-    alert(` Registration Successful!
+      if (loginResponse.ok) {
+        const loginData = await loginResponse.json();
+        
+        // Store auth data
+        sessionStorage.setItem('meritToken', loginData.token);
+        sessionStorage.setItem('meritUser', JSON.stringify(loginData.user));
+        
+        // Clear pending registration
+        sessionStorage.removeItem('pendingRegistration');
+        
+        alert(`Registration Successful!\n\nYour Student ID: ${result.studentId}\nStatus: ${result.status}`);
+        navigate('/student/dashboard');
+      } else {
+        // If auto-login fails, still navigate but with pending data
+        alert(`Registration Submitted!\n\nYour Student ID: ${result.studentId}\nStatus: Pending Validation\nYou can check your status on the dashboard.`);
+        navigate('/student/dashboard');
+      }
+    } catch (loginError) {
+      console.error('Auto-login failed:', loginError);
+      alert(`Registration Submitted!\n\nYour Student ID: ${result.studentId}\nPlease login with your email to check status.`);
+      navigate('/auth');
+    }
 
-Student ID: ${data.studentId}
-Status: Pending Validation
-
-You will now be directed to your dashboard. Please wait for admin validation within 7 days.`);
-    
-    //  REDIRECT TO DASHBOARD
-    navigate('/student/dashboard');
-    
   } catch (error) {
-    console.error(' Registration error:', error);
-    alert(`Registration failed: ${error.message}\n\nPlease try again or contact support.`);
+    console.error('Registration error:', error);
+    alert(error.message || 'Registration failed. Please try again.');
   } finally {
     setLoading(false);
   }
