@@ -231,7 +231,7 @@ const StudentRegistrationForm = ({ navigate }) => {
     }
   };
 
- const handleSubmit = async () => {
+const handleSubmit = async () => {
   if (!validateStep3()) {
     alert('Please accept terms and sign the form');
     return;
@@ -266,7 +266,8 @@ const StudentRegistrationForm = ({ navigate }) => {
       photo: formData.photoPreview // Base64 string
     };
 
-    // Submit to backend
+    console.log('📤 Submitting registration...');
+
     const response = await fetch('/api/students/register', {
       method: 'POST',
       headers: {
@@ -282,21 +283,79 @@ const StudentRegistrationForm = ({ navigate }) => {
 
     const data = await response.json();
 
-    alert(`Registration Successful!\n\nYour Student ID: ${data.studentId}\n\nPlease wait for admin validation within 7 days.`);
+    console.log('✅ Registration successful:', data);
+
+    // ✅ CRITICAL FIX: Store data in sessionStorage AND navigate properly
+    const tempStudentData = {
+      studentId: data.studentId,
+      surname: formData.surname,
+      middleName: formData.middleName,
+      lastName: formData.lastName,
+      email: formData.email,
+      studentPhone: formData.studentPhone,
+      parentsPhone: formData.parentsPhone,
+      programme: formData.programme,
+      subjects: formData.subjects,
+      status: 'pending',
+      registrationDate: new Date().toISOString(),
+      photoPreview: formData.photoPreview
+    };
+
+    // Store for immediate dashboard access
+    sessionStorage.setItem('pendingRegistration', JSON.stringify(tempStudentData));
     
-    // Redirect to login page
-    navigate('/auth');
+    // Store user session
+    sessionStorage.setItem('meritUser', JSON.stringify({
+      id: data.studentId,
+      name: `${formData.surname} ${formData.middleName} ${formData.lastName}`.trim(),
+      email: formData.email,
+      role: 'student',
+      status: 'pending'
+    }));
+
+    // Create a temporary token for the session
+    sessionStorage.setItem('meritToken', 'temp_' + Date.now());
+
+    alert(` Registration Successful!
+
+Student ID: ${data.studentId}
+Status: Pending Validation
+
+You will now be directed to your dashboard. Please wait for admin validation within 7 days.`);
+    
+    //  REDIRECT TO DASHBOARD
+    navigate('/student/dashboard');
+    
   } catch (error) {
-    console.error('Registration error:', error);
-    alert(error.message || 'Registration failed. Please try again.');
+    console.error(' Registration error:', error);
+    alert(`Registration failed: ${error.message}\n\nPlease try again or contact support.`);
   } finally {
     setLoading(false);
   }
 };
 
-  const handlePrint = () => {
+ const handlePrint = () => {
+  // Ensure the print CSS is loaded
+  const printStyles = document.createElement('style');
+  printStyles.textContent = `
+    @media print {
+      @page { size: A4; margin: 15mm; }
+      body * { visibility: hidden; }
+      #printable-form, #printable-form * { visibility: visible; }
+      #printable-form { position: absolute; left: 0; top: 0; width: 100%; background: white; }
+      .no-print { display: none !important; }
+      * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    }
+  `;
+  document.head.appendChild(printStyles);
+  
+  // Trigger print
+  setTimeout(() => {
     window.print();
-  };
+    // Clean up
+    document.head.removeChild(printStyles);
+  }, 100);
+};
 
   // Render Step 1: Personal Details
   const renderStep1 = () => (
@@ -885,48 +944,89 @@ const StudentRegistrationForm = ({ navigate }) => {
 
     return (
       <>
-        <style>{`
-          @media print {
-            body * {
-              visibility: hidden;
-            }
-            #printable-form, #printable-form * {
-              visibility: visible;
-            }
-            #printable-form {
-              position: absolute;
-              left: 0;
-              top: 0;
-              width: 210mm;
-              padding: 20mm;
-            }
-            .no-print {
-              display: none !important;
-            }
-            .page-break {
-              page-break-before: always;
-            }
-          }
-        `}</style>
+       <style>{`
+  @media print {
+    @page {
+      size: A4;
+      margin: 15mm;
+    }
+    
+    body * {
+      visibility: hidden;
+    }
+    
+    #printable-form,
+    #printable-form * {
+      visibility: visible;
+    }
+    
+    #printable-form {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+      background: white;
+    }
+    
+    .no-print {
+      display: none !important;
+    }
+    
+    /* Ensure images print */
+    img {
+      max-width: 100%;
+      page-break-inside: avoid;
+    }
+    
+    /* Page breaks */
+    .page-break {
+      page-break-before: always;
+    }
+    
+    /* Borders and backgrounds */
+    * {
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+  }
+`}</style>
         
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto no-print">
           <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             <div id="printable-form" className="p-8" style={{ width: '210mm' }}>
-              {/* Header */}
-              <div className="flex items-center justify-between mb-8 pb-6 border-b-2 border-gray-900">
-                <div className="w-20 h-20 bg-gray-900 rounded-full flex items-center justify-center text-white text-2xl font-bold">
-                  MC
-                </div>
-                <div className="text-center flex-1">
-                  <h1 className="text-2xl font-bold text-gray-900">MERIT COLLEGE OF ADVANCED STUDIES</h1>
-                  <p className="text-sm text-gray-600">KNOWLEDGE FOR ADVANCEMENT</p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Office: 32, Ansarul Ogidi, beside Conoil filling station, Ilorin, Kwara State
-                  </p>
-                </div>
-                <div className="w-20 h-20"></div>
-              </div>
-
+             {/* Header - FIXED */}
+<div className="flex items-center justify-between mb-8 pb-6 border-b-2 border-gray-900">
+  <img 
+    src="/meritlogo.jpg" 
+    alt="Merit College" 
+    className="w-20 h-20 rounded-full object-cover"
+    onError={(e) => {
+      e.target.style.display = 'none';
+      e.target.nextElementSibling.style.display = 'flex';
+    }}
+  />
+  <div className="w-20 h-20 bg-gray-900 rounded-full flex items-center justify-center text-white text-2xl font-bold" style={{ display: 'none' }}>
+    MC
+  </div>
+  
+  <div className="text-center flex-1 px-4">
+    <h1 className="text-2xl font-bold text-gray-900 uppercase">
+      MERIT COLLEGE OF ADVANCED STUDIES
+    </h1>
+    <p className="text-sm text-gray-600 mt-1">KNOWLEDGE FOR ADVANCEMENT</p>
+    <p className="text-xs text-gray-500 mt-1">
+      Office: 32, Ansarul Ogidi, beside Conoil filling station, Ilorin, Kwara State
+    </p>
+  </div>
+  
+  {formData.photoPreview && (
+    <img 
+      src={formData.photoPreview} 
+      alt="Student" 
+      className="w-20 h-20 object-cover border-2 border-gray-900 rounded"
+    />
+  )}
+</div>
               <h2 className="text-xl font-bold text-center text-gray-900 mb-6">EXAMINATION ENTRY DETAILS</h2>
 
               {/* Personal Details */}
