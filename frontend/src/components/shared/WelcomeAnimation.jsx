@@ -1,3 +1,4 @@
+// frontend/src/components/shared/WelcomeAnimation.jsx
 import React, { useState, useEffect } from 'react';
 
 const WelcomeAnimation = ({ onComplete }) => {
@@ -36,11 +37,7 @@ const WelcomeAnimation = ({ onComplete }) => {
         clearInterval(timer2);
         setTimeout(() => {
           setFadeOut(true);
-          setTimeout(() => {
-            if (onComplete && typeof onComplete === 'function') {
-              onComplete();
-            }
-          }, 1000);
+          setTimeout(onComplete, 1000);
         }, 2000);
       }
     }, 60);
@@ -63,18 +60,18 @@ const WelcomeAnimation = ({ onComplete }) => {
 
         <h1 className="text-4xl md:text-6xl font-bold text-white mb-6 font-serif">
           {text1}
-          {text1.length < line1.length && <span className="animate-pulse">|</span>}
+          <span className="animate-pulse">|</span>
         </h1>
 
         {showSecond && (
-          <p className="text-xl md:text-2xl text-gray-300 font-light animate-breathe">
+          <p className="text-xl md:text-2xl text-gray-300 font-light animate-pulse">
             {text2}
-            {text2.length < line2.length && <span className="animate-pulse">|</span>}
+            <span className="animate-pulse">|</span>
           </p>
         )}
       </div>
 
-      <style>{`
+      <style jsx>{`
         @keyframes breathe {
           0%, 100% { opacity: 0.6; transform: scale(1); }
           50% { opacity: 1; transform: scale(1.02); }
