@@ -1,3 +1,4 @@
+// frontend/src/App.jsx
 import React, { useState, useEffect } from 'react';
 
 // Import all components
@@ -14,7 +15,7 @@ import ParentDashboard from './components/parent/ParentDashboard';
 import AdmissionLetter from './components/shared/AdmissionLetter';
 
 // Auth Context
-const AuthContext = React.createContext(null);
+export const AuthContext = React.createContext(null);
 
 export const useAuth = () => {
   const context = React.useContext(AuthContext);
@@ -27,71 +28,115 @@ const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    try {
-      const storedUser = sessionStorage.getItem('meritUser');
-      const token = sessionStorage.getItem('meritToken');
-      if (storedUser && token) {
-        setUser(JSON.parse(storedUser));
+    const initializeAuth = () => {
+      try {
+        const storedUser = sessionStorage.getItem('meritUser');
+        const token = sessionStorage.getItem('meritToken');
+        
+        console.log('Auth initialization:', { storedUser, tokenExists: !!token });
+        
+        if (storedUser && token) {
+          setUser(JSON.parse(storedUser));
+        }
+      } catch (error) {
+        console.error('Error loading user from session:', error);
+        sessionStorage.removeItem('meritUser');
+        sessionStorage.removeItem('meritToken');
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error('Error loading user from session:', error);
-      sessionStorage.clear();
-    }
-    setLoading(false);
+    };
+
+    initializeAuth();
   }, []);
 
   const login = (userData, token) => {
+    console.log('Login called:', { userData, token });
     setUser(userData);
     sessionStorage.setItem('meritUser', JSON.stringify(userData));
     sessionStorage.setItem('meritToken', token);
   };
 
   const logout = () => {
+    console.log('Logout called');
     setUser(null);
-    sessionStorage.clear();
+    sessionStorage.removeItem('meritUser');
+    sessionStorage.removeItem('meritToken');
+    sessionStorage.removeItem('pendingRegistration');
+  };
+
+  const value = {
+    user,
+    login,
+    logout,
+    loading
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading }}>
-      {!loading && children}
+    <AuthContext.Provider value={value}>
+      {children}
     </AuthContext.Provider>
   );
 };
 
 // Router Component
 const Router = () => {
-  const [currentPath, setCurrentPath] = useState(window.location.pathname);
+  const [currentPath, setCurrentPath] = useState(window.location.pathname + window.location.search);
+  const { user } = useAuth();
 
   useEffect(() => {
     const handleNavigation = () => {
-      setCurrentPath(window.location.pathname);
+      setCurrentPath(window.location.pathname + window.location.search);
     };
 
     window.addEventListener('popstate', handleNavigation);
-    return () => window.removeEventListener('popstate', handleNavigation);
+    window.addEventListener('pushstate', handleNavigation);
+    
+    return () => {
+      window.removeEventListener('popstate', handleNavigation);
+      window.removeEventListener('pushstate', handleNavigation);
+    };
   }, []);
 
   const navigate = (path) => {
+    console.log('Navigating to:', path);
     window.history.pushState({}, '', path);
     setCurrentPath(path);
+    // Dispatch custom event for other components to listen
+    window.dispatchEvent(new Event('pushstate'));
   };
 
-  // HOME / LANDING PAGE
+  // Check authentication for protected routes
+  const requireAuth = (requiredRole = null) => {
+    if (!user) {
+      navigate('/auth');
+      return false;
+    }
+    if (requiredRole && user.role !== requiredRole) {
+      navigate('/');
+      return false;
+    }
+    return true;
+  };
+
+  console.log('Current path:', currentPath, 'User:', user);
+
+  // Route definitions
   if (currentPath === '/' || currentPath === '') {
     return <LandingPage navigate={navigate} />;
   }
 
-  // ADMIN ROUTE (MUST BE FIRST)
+  // ADMIN ROUTE
   if (currentPath === '/xaxaxaxadmin') {
     return <AdminDashboard navigate={navigate} />;
   }
 
-  // AUTH
+  // AUTH ROUTES
   if (currentPath === '/auth' || currentPath.startsWith('/auth?')) {
     return <AuthPage navigate={navigate} />;
   }
 
-  // GUEST
+  // GUEST ROUTE
   if (currentPath === '/guest') {
     return <GuestPage navigate={navigate} />;
   }
@@ -102,10 +147,12 @@ const Router = () => {
   }
 
   if (currentPath === '/student/dashboard') {
+    if (!requireAuth('student')) return null;
     return <StudentDashboard navigate={navigate} />;
   }
 
   if (currentPath === '/student/admission-letter') {
+    if (!requireAuth('student')) return null;
     return <AdmissionLetter navigate={navigate} />;
   }
 
@@ -115,34 +162,33 @@ const Router = () => {
   }
 
   if (currentPath === '/staff/dashboard') {
+    if (!requireAuth('staff')) return null;
     return <StaffDashboard navigate={navigate} />;
   }
 
   // PARENT ROUTE
   if (currentPath === '/parent/dashboard') {
+    if (!requireAuth('parent')) return null;
     return <ParentDashboard navigate={navigate} />;
   }
 
-  // 404
-  return <PageUnderConstruction navigate={navigate} />;
-};
-
-// Page Under Construction
-const PageUnderConstruction = ({ navigate }) => (
-  <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-    <div className="text-center">
-      <h1 className="text-6xl font-bold text-gray-900 mb-4">🚧</h1>
-      <h2 className="text-2xl font-bold text-gray-900 mb-2">Page Under Construction</h2>
-      <p className="text-gray-600 mb-6">This page is being built and will be available soon.</p>
-      <button
-        onClick={() => navigate('/')}
-        className="px-6 py-3 bg-gray-900 text-white rounded-lg font-semibold hover:bg-gray-800 transition"
-      >
-        Go to Homepage
-      </button>
+  // 404 - Page Under Construction
+  return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className="text-center">
+        <h1 className="text-6xl font-bold text-gray-900 mb-4">🚧</h1>
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">Page Not Found</h2>
+        <p className="text-gray-600 mb-6">The page you're looking for doesn't exist.</p>
+        <button
+          onClick={() => navigate('/')}
+          className="px-6 py-3 bg-gray-900 text-white rounded-lg font-semibold hover:bg-gray-800 transition"
+        >
+          Go to Homepage
+        </button>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 function App() {
   const [showWelcome, setShowWelcome] = useState(true);
