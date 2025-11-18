@@ -6,6 +6,17 @@ import rateLimit from 'express-rate-limit';
 import multer from 'multer';
 const upload = multer({ limits: { fileSize: 5 * 1024 * 1024 } });
 
+const upload = multer({
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB max
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only images allowed'));
+    }
+  }
+});
+
 app.use('/api/students/register', upload.single('photo'));
 app.use('/api/staff/register', upload.single('photo'));
 
