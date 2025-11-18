@@ -3,6 +3,11 @@ import cors from 'cors';
 import helmet from 'helmet';
 import dotenv from 'dotenv';
 import rateLimit from 'express-rate-limit';
+import multer from 'multer';
+const upload = multer({ limits: { fileSize: 5 * 1024 * 1024 } });
+
+app.use('/api/students/register', upload.single('photo'));
+app.use('/api/staff/register', upload.single('photo'));
 
 // Routes
 import authRoutes from './routes/auth.routes.js';
