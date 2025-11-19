@@ -1,7 +1,8 @@
-// frontend/src/components/student/StudentRegistrationForm.jsx - COMPLETE FIXED VERSION
+// frontend/src/components/student/StudentRegistrationForm.jsx - COMPLETELY FIXED PRINT VERSION
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../App';
+import "../../styles/print.css";
 import { 
   Upload, X, AlertCircle, CheckCircle, MapPin, 
   User, Mail, Phone, Home, Calendar, Book,
@@ -41,6 +42,7 @@ const StudentRegistrationForm = () => {
   const [loading, setLoading] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const fileInputRef = useRef(null);
+  const printContentRef = useRef(null);
 
   const nigerianStates = [
     'Abia', 'Adamawa', 'Akwa Ibom', 'Anambra', 'Bauchi', 'Bayelsa', 'Benue', 
@@ -201,7 +203,6 @@ const StudentRegistrationForm = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  // ✅ ADDED: Missing validateForm function
   const validateForm = () => {
     return validateStep1() && validateStep2() && validateStep3();
   };
@@ -290,61 +291,259 @@ const StudentRegistrationForm = () => {
     }
   };
 
-  // ✅ FIXED: Proper handlePrint function
+  // ✅ FIXED: Completely rewritten print function
   const handlePrint = () => {
-    const printStyles = document.createElement('style');
-    printStyles.id = 'print-styles-temp';
-    printStyles.textContent = `
-      @media print {
-        @page { 
-          size: A4; 
-          margin: 15mm; 
-        }
-        body * { 
-          visibility: hidden !important; 
-        }
-        #printable-form, 
-        #printable-form * { 
-          visibility: visible !important; 
-        }
-        #printable-form { 
-          position: absolute !important; 
-          left: 0 !important; 
-          top: 0 !important; 
-          width: 100% !important;
-          background: white !important;
-        }
-        .no-print { 
-          display: none !important; 
-        }
-        * { 
-          -webkit-print-color-adjust: exact !important; 
-          print-color-adjust: exact !important; 
-        }
-        img { 
-          display: block !important; 
-          max-width: 100% !important;
-          page-break-inside: avoid !important;
-        }
-        .border, .border-b, .border-t, .border-l, .border-r,
-        [class*="border-"] {
-          border-color: #000 !important;
-          border-style: solid !important;
-        }
-      }
-    `;
+    // Create a new window for printing
+    const printWindow = window.open('', '_blank', 'width=800,height=600');
     
-    document.head.appendChild(printStyles);
+    // Get the printable content
+    const printableElement = document.getElementById('printable-form');
+    if (!printableElement) {
+      alert('Print content not found!');
+      return;
+    }
+
+    // Clone the element to avoid modifying the original
+    const printContent = printableElement.cloneNode(true);
     
-    setTimeout(() => {
-      window.print();
-      setTimeout(() => {
-        const tempStyles = document.getElementById('print-styles-temp');
-        if (tempStyles) {
-          document.head.removeChild(tempStyles);
-        }
-      }, 100);
-    }, 500);
+    // Fix images for printing
+    const images = printContent.getElementsByTagName('img');
+    for (let img of images) {
+      // Ensure images are visible and properly sized for print
+      img.style.maxWidth = '100%';
+      img.style.height = 'auto';
+      img.style.display = 'block';
+    }
+
+    // Create the print document
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Student Registration Form - ${formData.surname} ${formData.lastName}</title>
+          <meta charset="UTF-8">
+          <style>
+            /* Reset and base styles */
+            * {
+              margin: 0;
+              padding: 0;
+              box-sizing: border-box;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+            }
+            
+            body {
+              font-family: 'Arial', sans-serif;
+              line-height: 1.4;
+              color: #000;
+              background: white;
+              padding: 0;
+              margin: 0;
+              font-size: 12pt;
+            }
+            
+            .print-container {
+              width: 100%;
+              max-width: 210mm;
+              margin: 0 auto;
+              padding: 15mm;
+            }
+            
+            /* Header styles */
+            .print-header {
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              margin-bottom: 20px;
+              padding-bottom: 15px;
+              border-bottom: 2px solid #000;
+            }
+            
+            .college-logo {
+              width: 80px;
+              height: 80px;
+              object-fit: cover;
+              border-radius: 50%;
+            }
+            
+            .college-info {
+              text-align: center;
+              flex: 1;
+              padding: 0 20px;
+            }
+            
+            .college-name {
+              font-size: 18pt;
+              font-weight: bold;
+              text-transform: uppercase;
+              margin-bottom: 5px;
+            }
+            
+            .college-motto {
+              font-size: 10pt;
+              margin-bottom: 5px;
+            }
+            
+            .college-address {
+              font-size: 9pt;
+            }
+            
+            .student-photo {
+              width: 80px;
+              height: 80px;
+              object-fit: cover;
+              border: 2px solid #000;
+            }
+            
+            /* Form content styles */
+            .form-title {
+              text-align: center;
+              font-size: 16pt;
+              font-weight: bold;
+              margin: 20px 0;
+            }
+            
+            .section-title {
+              font-weight: bold;
+              background: #f0f0f0 !important;
+              padding: 8px 12px;
+              margin: 15px 0 10px 0;
+              border-radius: 4px;
+              font-size: 11pt;
+            }
+            
+            .personal-details {
+              margin-bottom: 20px;
+            }
+            
+            .details-grid {
+              display: grid;
+              gap: 10px;
+            }
+            
+            .detail-row {
+              display: flex;
+              margin-bottom: 8px;
+            }
+            
+            .detail-label {
+              font-weight: bold;
+              min-width: 150px;
+            }
+            
+            .detail-value {
+              flex: 1;
+              border-bottom: 1px solid #666;
+              padding-bottom: 2px;
+            }
+            
+            .subjects-grid {
+              display: grid;
+              grid-template-columns: 1fr 1fr;
+              gap: 8px;
+              margin: 10px 0;
+            }
+            
+            .subject-item {
+              display: flex;
+              align-items: center;
+              gap: 5px;
+              font-size: 10pt;
+            }
+            
+            /* Signature section */
+            .signature-section {
+              margin: 30px 0 20px 0;
+            }
+            
+            .signature-line {
+              border-bottom: 1px solid #000;
+              margin: 25px 0 5px 0;
+              min-height: 20px;
+            }
+            
+            .signature-label {
+              font-size: 9pt;
+              text-align: center;
+            }
+            
+            .signatures-container {
+              display: flex;
+              justify-content: space-between;
+              margin-top: 40px;
+            }
+            
+            .signature-box {
+              width: 200px;
+            }
+            
+            /* Office use section */
+            .office-use {
+              background: #f8f8f8 !important;
+              padding: 15px;
+              border-radius: 4px;
+              margin-top: 30px;
+              border: 1px solid #ddd;
+            }
+            
+            /* Print-specific styles */
+            @page {
+              size: A4;
+              margin: 15mm;
+            }
+            
+            @media print {
+              body {
+                margin: 0;
+                padding: 0;
+              }
+              
+              .print-container {
+                padding: 0;
+                margin: 0;
+                width: 100%;
+              }
+              
+              .page-break {
+                page-break-before: always;
+              }
+              
+              .no-print {
+                display: none !important;
+              }
+            }
+            
+            /* Ensure proper spacing and avoid breaks */
+            .avoid-break {
+              page-break-inside: avoid;
+              break-inside: avoid;
+            }
+            
+            .force-break {
+              page-break-before: always;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="print-container">
+            ${printContent.innerHTML}
+          </div>
+          <script>
+            // Wait for images to load before printing
+            window.onload = function() {
+              setTimeout(function() {
+                window.print();
+                setTimeout(function() {
+                  window.close();
+                }, 500);
+              }, 500);
+            };
+          </script>
+        </body>
+      </html>
+    `);
+
+    printWindow.document.close();
   };
 
   const renderStep1 = () => (
@@ -909,263 +1108,222 @@ const StudentRegistrationForm = () => {
     if (!showPreview) return null;
 
     return (
-      <>
-        <style>{`
-          @media print {
-            @page {
-              size: A4;
-              margin: 15mm;
-            }
-            body * {
-              visibility: hidden;
-            }
-            #printable-form,
-            #printable-form * {
-              visibility: visible;
-            }
-            #printable-form {
-              position: absolute;
-              left: 0;
-              top: 0;
-              width: 100%;
-              background: white;
-            }
-            .no-print {
-              display: none !important;
-            }
-            img {
-              max-width: 100%;
-              page-break-inside: avoid;
-            }
-            .page-break {
-              page-break-before: always;
-            }
-            * {
-              -webkit-print-color-adjust: exact !important;
-              print-color-adjust: exact !important;
-            }
-          }
-        `}</style>
-        
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto no-print">
-          <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div id="printable-form" className="p-8" style={{ width: '210mm' }}>
-              <div className="flex items-center justify-between mb-8 pb-6 border-b-2 border-gray-900">
-                <img 
-                  src="/meritlogo.jpg" 
-                  alt="Merit College" 
-                  className="w-20 h-20 rounded-full object-cover"
-                  onError={(e) => {
-                    e.target.style.display = 'none';
-                    e.target.nextElementSibling.style.display = 'flex';
-                  }}
-                />
-                <div className="w-20 h-20 bg-gray-900 rounded-full flex items-center justify-center text-white text-2xl font-bold" style={{ display: 'none' }}>
-                  MC
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto no-print">
+        <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+          <div 
+            id="printable-form" 
+            ref={printContentRef}
+            className="p-8 avoid-break"
+            style={{ 
+              width: '210mm',
+              minHeight: '297mm',
+              background: 'white'
+            }}
+          >
+            {/* Header */}
+            <div className="print-header avoid-break">
+              <img 
+                src="/meritlogo.jpg" 
+                alt="Merit College" 
+                className="college-logo"
+                onError={(e) => {
+                  e.target.style.display = 'none';
+                }}
+              />
+              
+              <div className="college-info">
+                <div className="college-name">MERIT COLLEGE OF ADVANCED STUDIES</div>
+                <div className="college-motto">KNOWLEDGE FOR ADVANCEMENT</div>
+                <div className="college-address">
+                  Office: 32, Ansarul Ogidi, beside Conoil filling station, Ilorin, Kwara State
                 </div>
-                
-                <div className="text-center flex-1 px-4">
-                  <h1 className="text-2xl font-bold text-gray-900 uppercase">
-                    MERIT COLLEGE OF ADVANCED STUDIES
-                  </h1>
-                  <p className="text-sm text-gray-600 mt-1">KNOWLEDGE FOR ADVANCEMENT</p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Office: 32, Ansarul Ogidi, beside Conoil filling station, Ilorin, Kwara State
-                  </p>
-                </div>
-                
-                {formData.photoPreview && (
-                  <img 
-                    src={formData.photoPreview} 
-                    alt="Student" 
-                    className="w-20 h-20 object-cover border-2 border-gray-900 rounded"
-                  />
-                )}
               </div>
+              
+              {formData.photoPreview && (
+                <img 
+                  src={formData.photoPreview} 
+                  alt="Student" 
+                  className="student-photo"
+                />
+              )}
+            </div>
 
-              <h2 className="text-xl font-bold text-center text-gray-900 mb-6">EXAMINATION ENTRY DETAILS</h2>
+            {/* Form Title */}
+            <div className="form-title avoid-break">
+              EXAMINATION ENTRY DETAILS
+            </div>
 
-              <div className="mb-6">
-                <h3 className="font-bold text-gray-900 mb-3 bg-gray-100 px-3 py-2 rounded">(A) PERSONAL DETAILS</h3>
+            {/* Personal Details */}
+            <div className="personal-details avoid-break">
+              <div className="section-title">(A) PERSONAL DETAILS</div>
+              
+              <div className="details-grid">
+                <div className="detail-row">
+                  <span className="detail-label">Name:</span>
+                  <span className="detail-value">
+                    {formData.surname} {formData.middleName} {formData.lastName}
+                  </span>
+                </div>
                 
-                <div className="flex gap-6">
-                  <div className="flex-1 space-y-3 text-sm">
-                    <div className="grid grid-cols-3 gap-4">
-                      <div>
-                        <span className="font-semibold">Name:</span>
-                        <div className="border-b border-gray-400 pb-1">
-                          {formData.surname} {formData.middleName} {formData.lastName}
-                        </div>
-                      </div>
-                      <div>
-                        <span className="font-semibold">Sex:</span>
-                        <div className="border-b border-gray-400 pb-1">{formData.gender}</div>
-                      </div>
-                      <div>
-                        <span className="font-semibold">Date of Birth:</span>
-                        <div className="border-b border-gray-400 pb-1">{formData.dateOfBirth}</div>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <span className="font-semibold">State of Origin:</span>
-                        <div className="border-b border-gray-400 pb-1">{formData.stateOfOrigin}</div>
-                      </div>
-                      <div>
-                        <span className="font-semibold">L.G.A:</span>
-                        <div className="border-b border-gray-400 pb-1">{formData.lga}</div>
-                      </div>
-                    </div>
-
-                    <div>
-                      <span className="font-semibold">Permanent Home Address:</span>
-                      <div className="border-b border-gray-400 pb-1">{formData.permanentAddress}</div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <span className="font-semibold">Parents Phone Number:</span>
-                        <div className="border-b border-gray-400 pb-1">{formData.parentsPhone}</div>
-                      </div>
-                      <div>
-                        <span className="font-semibold">Student Phone Number:</span>
-                        <div className="border-b border-gray-400 pb-1">{formData.studentPhone}</div>
-                      </div>
-                    </div>
-
-                    <div>
-                      <span className="font-semibold">Email:</span>
-                      <div className="border-b border-gray-400 pb-1">{formData.email}</div>
-                    </div>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="detail-row">
+                    <span className="detail-label">Sex:</span>
+                    <span className="detail-value">{formData.gender}</span>
                   </div>
+                  <div className="detail-row">
+                    <span className="detail-label">Date of Birth:</span>
+                    <span className="detail-value">{formData.dateOfBirth}</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="detail-label">State of Origin:</span>
+                    <span className="detail-value">{formData.stateOfOrigin}</span>
+                  </div>
+                </div>
+                
+                <div className="detail-row">
+                  <span className="detail-label">L.G.A:</span>
+                  <span className="detail-value">{formData.lga}</span>
+                </div>
+                
+                <div className="detail-row">
+                  <span className="detail-label">Permanent Home Address:</span>
+                  <span className="detail-value">{formData.permanentAddress}</span>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="detail-row">
+                    <span className="detail-label">Parents Phone Number:</span>
+                    <span className="detail-value">{formData.parentsPhone}</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="detail-label">Student Phone Number:</span>
+                    <span className="detail-value">{formData.studentPhone}</span>
+                  </div>
+                </div>
+                
+                <div className="detail-row">
+                  <span className="detail-label">Email:</span>
+                  <span className="detail-value">{formData.email}</span>
+                </div>
+              </div>
+            </div>
 
-                  {formData.photoPreview && (
-                    <div className="flex-shrink-0">
-                      <img 
-                        src={formData.photoPreview} 
-                        alt="Student" 
-                        className="w-32 h-32 object-cover border-2 border-gray-900"
-                      />
+            {/* Programme Selection */}
+            <div className="avoid-break">
+              <div className="section-title">(B) PROGRAMME SELECTION</div>
+              <div className="detail-row">
+                <span className="detail-label">Programme:</span>
+                <span className="detail-value">{formData.programme}</span>
+              </div>
+            </div>
+
+            {/* Subjects */}
+            <div className="avoid-break">
+              <div className="section-title">
+                (C) {formData.programme === 'O-Level' ? 'AVAILABLE O-LEVEL COURSES' : 
+                     formData.programme === 'A-Level' ? 'A-LEVEL SUBJECTS' : 'JAMB SUBJECTS'}
+              </div>
+              <div className="subjects-grid">
+                {formData.subjects.map((subject, index) => (
+                  <div key={index} className="subject-item">
+                    <CheckCircle className="w-4 h-4" />
+                    <span>{subject}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Choice of Institution (A-Level only) */}
+            {formData.programme === 'A-Level' && (formData.university || formData.course || formData.polytechnic || formData.collegeOfEducation) && (
+              <div className="avoid-break">
+                <div className="section-title">(D) CHOICE OF INSTITUTION</div>
+                <div className="details-grid">
+                  {formData.university && (
+                    <div className="detail-row">
+                      <span className="detail-label">University:</span>
+                      <span className="detail-value">{formData.university}</span>
+                    </div>
+                  )}
+                  {formData.course && (
+                    <div className="detail-row">
+                      <span className="detail-label">Course:</span>
+                      <span className="detail-value">{formData.course}</span>
+                    </div>
+                  )}
+                  {formData.polytechnic && (
+                    <div className="detail-row">
+                      <span className="detail-label">Polytechnic:</span>
+                      <span className="detail-value">{formData.polytechnic}</span>
+                    </div>
+                  )}
+                  {formData.collegeOfEducation && (
+                    <div className="detail-row">
+                      <span className="detail-label">College of Education:</span>
+                      <span className="detail-value">{formData.collegeOfEducation}</span>
                     </div>
                   )}
                 </div>
               </div>
+            )}
 
-              <div className="mb-6">
-                <h3 className="font-bold text-gray-900 mb-3 bg-gray-100 px-3 py-2 rounded">(B) PROGRAMME SELECTION</h3>
-                <div className="text-sm space-y-2">
-                  <div className="flex gap-4">
-                    <span className="font-semibold">Programme:</span>
-                    <span>{formData.programme}</span>
-                  </div>
-                </div>
+            {/* Attestation */}
+            <div className="signature-section avoid-break">
+              <div className="section-title">
+                {formData.programme === 'A-Level' && (formData.university || formData.course) ? '(E) ATTESTATION' : '(D) ATTESTATION'}
               </div>
-
-              <div className="mb-6">
-                <h3 className="font-bold text-gray-900 mb-3 bg-gray-100 px-3 py-2 rounded">
-                  (C) {formData.programme === 'O-Level' ? 'AVAILABLE O-LEVEL COURSES' : 
-                       formData.programme === 'A-Level' ? 'A-LEVEL SUBJECTS' : 'JAMB SUBJECTS'}
-                </h3>
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  {formData.subjects.map((subject, index) => (
-                    <div key={index} className="flex items-center gap-2">
-                      <CheckCircle className="w-4 h-4 text-gray-900" />
-                      <span>{subject}</span>
-                    </div>
-                  ))}
+              <p className="mb-4">
+                I <span className="font-semibold" style={{ borderBottom: '1px solid #666', paddingBottom: '2px' }}>
+                  {formData.signature}
+                </span> confirm that all details supplied above are correct and shall be liable to any changes after submission.
+              </p>
+              
+              <div className="signatures-container">
+                <div className="signature-box">
+                  <div className="signature-line"></div>
+                  <div className="signature-label">Student's Signature & Date</div>
                 </div>
-              </div>
-
-              {formData.programme === 'A-Level' && (formData.university || formData.course || formData.polytechnic || formData.collegeOfEducation) && (
-                <div className="mb-6">
-                  <h3 className="font-bold text-gray-900 mb-3 bg-gray-100 px-3 py-2 rounded">(D) CHOICE OF INSTITUTION</h3>
-                  <div className="text-sm space-y-2">
-                    {formData.university && (
-                      <div>
-                        <span className="font-semibold">University:</span>
-                        <div className="border-b border-gray-400 pb-1">{formData.university}</div>
-                      </div>
-                    )}
-                    {formData.course && (
-                      <div>
-                        <span className="font-semibold">Course:</span>
-                        <div className="border-b border-gray-400 pb-1">{formData.course}</div>
-                      </div>
-                    )}
-                    {formData.polytechnic && (
-                      <div>
-                        <span className="font-semibold">Polytechnic:</span>
-                        <div className="border-b border-gray-400 pb-1">{formData.polytechnic}</div>
-                      </div>
-                    )}
-                    {formData.collegeOfEducation && (
-                      <div>
-                        <span className="font-semibold">College of Education:</span>
-                        <div className="border-b border-gray-400 pb-1">{formData.collegeOfEducation}</div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              <div className="mb-6">
-                <h3 className="font-bold text-gray-900 mb-3 bg-gray-100 px-3 py-2 rounded">
-                  {formData.programme === 'A-Level' && (formData.university || formData.course) ? '(E) ATTESTATION' : '(D) ATTESTATION'}
-                </h3>
-                <div className="text-sm">
-                  <p className="mb-4">
-                    I <span className="font-semibold border-b border-gray-400 px-2">{formData.signature}</span> confirm 
-                    that all details supplied above are correct and shall be liable to any changes after submission.
-                  </p>
-                  <div className="flex justify-between items-end pt-8">
-                    <div>
-                      <div className="border-b border-gray-900 w-48 mb-1"></div>
-                      <span className="text-xs">Student's Signature & Date</span>
-                    </div>
-                    <div>
-                      <div className="border-b border-gray-900 w-48 mb-1"></div>
-                      <span className="text-xs">Coordinator's Signature & Date</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-8 p-4 bg-gray-100 rounded">
-                <h3 className="font-bold text-gray-900 mb-3">
-                  {formData.programme === 'A-Level' && (formData.university || formData.course) ? '(F) FOR OFFICE USE ONLY' : '(E) FOR OFFICE USE ONLY'}
-                </h3>
-                <div className="space-y-2 text-sm">
-                  <div>
-                    <span className="font-semibold">Payment Status:</span>
-                    <span className="ml-4 border-b border-gray-400 inline-block w-48"></span>
-                  </div>
-                  <div>
-                    <span className="font-semibold">Detail Confirmation:</span>
-                    <span className="ml-4 border-b border-gray-400 inline-block w-48"></span>
-                  </div>
+                <div className="signature-box">
+                  <div className="signature-line"></div>
+                  <div className="signature-label">Coordinator's Signature & Date</div>
                 </div>
               </div>
             </div>
 
-            <div className="sticky bottom-0 bg-white border-t border-gray-200 p-4 flex justify-end gap-3 no-print">
-              <button
-                onClick={() => setShowPreview(false)}
-                className="px-6 py-2 text-gray-700 font-semibold hover:text-gray-900 transition"
-              >
-                Close Preview
-              </button>
-              <button
-                onClick={handlePrint}
-                className="px-6 py-2 bg-gray-900 text-white rounded-lg font-semibold hover:bg-gray-800 transition flex items-center gap-2"
-              >
-                <Printer className="w-4 h-4" />
-                Print Form
-              </button>
+            {/* Office Use Only */}
+            <div className="office-use avoid-break">
+              <div className="section-title">
+                {formData.programme === 'A-Level' && (formData.university || formData.course) ? '(F) FOR OFFICE USE ONLY' : '(E) FOR OFFICE USE ONLY'}
+              </div>
+              <div className="details-grid">
+                <div className="detail-row">
+                  <span className="detail-label">Payment Status:</span>
+                  <span className="detail-value"></span>
+                </div>
+                <div className="detail-row">
+                  <span className="detail-label">Detail Confirmation:</span>
+                  <span className="detail-value"></span>
+                </div>
+              </div>
             </div>
           </div>
+
+          <div className="sticky bottom-0 bg-white border-t border-gray-200 p-4 flex justify-end gap-3 no-print">
+            <button
+              onClick={() => setShowPreview(false)}
+              className="px-6 py-2 text-gray-700 font-semibold hover:text-gray-900 transition"
+            >
+              Close Preview
+            </button>
+            <button
+              onClick={handlePrint}
+              className="px-6 py-2 bg-gray-900 text-white rounded-lg font-semibold hover:bg-gray-800 transition flex items-center gap-2"
+            >
+              <Printer className="w-4 h-4" />
+              Print Form
+            </button>
+          </div>
         </div>
-      </>
+      </div>
     );
   };
 
