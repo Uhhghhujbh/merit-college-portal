@@ -1,7 +1,12 @@
+// frontend/src/components/auth/AuthPage.jsx - FIXED VERSION
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { User, Users, UserCheck, Home, Mail, Phone, AlertCircle } from 'lucide-react';
+import { useAuth } from '../../App';
 
-const AuthPage = ({ navigate }) => {
+const AuthPage = () => {
+  const navigate = useNavigate();
+  const { login } = useAuth();
   const [step, setStep] = useState('role');
   const [selectedRole, setSelectedRole] = useState(null);
   const [isRegister, setIsRegister] = useState(false);
@@ -67,97 +72,95 @@ const AuthPage = ({ navigate }) => {
     return Object.keys(newErrors).length === 0;
   };
 
-  // Updated handleSubmit in AuthPage.jsx
-const handleSubmit = async () => {
-  if (!validateForm()) return;
+  const handleSubmit = async () => {
+    if (!validateForm()) return;
 
-  setLoading(true);
+    setLoading(true);
 
-  try {
-    let endpoint = '';
-    let body = {};
+    try {
+      let endpoint = '';
+      let body = {};
 
-    if (selectedRole === 'parent') {
-      endpoint = '/api/auth/parent/login';
-      body = {
-        studentId: formData.studentId,
-        surname: formData.surname
+      if (selectedRole === 'parent') {
+        endpoint = '/api/auth/parent/login';
+        body = {
+          studentId: formData.studentId,
+          surname: formData.surname
+        };
+      } else if (selectedRole === 'admin') {
+        endpoint = '/api/auth/admin/login';
+        body = {
+          email: formData.email,
+          password: formData.password,
+          location: null
+        };
+      } else {
+        endpoint = `/api/auth/${selectedRole}/login`;
+        body = {
+          identifier: formData.email,
+          email: formData.email,
+          password: formData.password
+        };
+      }
+
+      console.log('Login attempt:', { endpoint, role: selectedRole });
+
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(body)
+      });
+
+      console.log('Response status:', response.status);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Login failed' }));
+        throw new Error(errorData.error || `Login failed with status ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log('Login successful:', data);
+
+      // Store token and user data
+      const userData = data.user || data.student || { 
+        email: data.email, 
+        role: selectedRole,
+        ...data 
       };
-    } else if (selectedRole === 'admin') {
-      endpoint = '/api/auth/admin/login';
-      body = {
-        email: formData.email,
-        password: formData.password,
-        location: null
+
+      const token = data.token;
+      sessionStorage.setItem('meritToken', token);
+      sessionStorage.setItem('meritUser', JSON.stringify(userData));
+
+      // Call context login
+      login(userData, token);
+
+      // Navigate to appropriate dashboard
+      const routes = {
+        student: '/student/dashboard',
+        staff: '/staff/dashboard',
+        parent: '/parent/dashboard',
+        admin: '/xaxaxaxadmin'
       };
-    } else {
-      endpoint = `/api/auth/${selectedRole}/login`;
-      body = {
-        identifier: formData.email,
-        email: formData.email,
-        password: formData.password
-      };
+
+      const targetRoute = routes[selectedRole];
+      if (targetRoute) {
+        console.log('Navigating to:', targetRoute);
+        navigate(targetRoute, { replace: true });
+      } else {
+        navigate('/', { replace: true });
+      }
+
+    } catch (error) {
+      console.error('Login error:', error);
+      alert(error.message || 'Login failed. Please check your credentials and try again.');
+    } finally {
+      setLoading(false);
     }
-
-    console.log('Login attempt:', { endpoint, role: selectedRole });
-
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      },
-      body: JSON.stringify(body)
-    });
-
-    console.log('Response status:', response.status);
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Login failed' }));
-      throw new Error(errorData.error || `Login failed with status ${response.status}`);
-    }
-
-    const data = await response.json();
-    console.log('Login successful:', data);
-
-    // Store token and user data
-    const userData = data.user || data.student || { 
-      email: data.email, 
-      role: selectedRole,
-      ...data 
-    };
-
-    // Use consistent storage keys
-    const token = data.token;
-    sessionStorage.setItem('meritToken', token);
-    sessionStorage.setItem('meritUser', JSON.stringify(userData));
-
-    // Call context login
-    login(userData, token);
-
-    // Navigate to appropriate dashboard
-    const routes = {
-      student: '/student/dashboard',
-      staff: '/staff/dashboard',
-      parent: '/parent/dashboard',
-      admin: '/xaxaxaxadmin'
-    };
-
-    const targetRoute = routes[selectedRole];
-    if (targetRoute) {
-      console.log('Navigating to:', targetRoute);
-      navigate(targetRoute);
-    } else {
-      navigate('/');
-    }
-
-  } catch (error) {
-    console.error('Login error:', error);
-    alert(error.message || 'Login failed. Please check your credentials and try again.');
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   if (step === 'role') {
     return (
@@ -221,10 +224,13 @@ const handleSubmit = async () => {
           <h1 className="text-2xl font-bold mb-2">
             {selectedRole.charAt(0).toUpperCase() + selectedRole.slice(1)} Portal
           </h1>
-          <p className="text-gray-300">Welcome back!</p>
+          <p className="text-gray-300">
+            {selectedRole === 'parent' ? 'Access your child\'s information' : 'Welcome back!'}
+          </p>
         </div>
 
         <div className="p-8">
+          {/* Only show Login/Register toggle for non-parent roles */}
           {selectedRole !== 'parent' && (
             <div className="flex gap-2 mb-8 bg-gray-100 rounded-lg p-1">
               <button
@@ -249,6 +255,7 @@ const handleSubmit = async () => {
           <div className="space-y-4 mb-6">
             {selectedRole === 'parent' ? (
               <>
+                {/* Parent Login Fields */}
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
                     <User className="w-4 h-4 inline mr-2" />
@@ -290,9 +297,15 @@ const handleSubmit = async () => {
                     </p>
                   )}
                 </div>
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-4">
+                  <p className="text-sm text-blue-800">
+                    <strong>Parent Access:</strong> Use your child's Student ID and surname to view their academic information.
+                  </p>
+                </div>
               </>
             ) : (
               <>
+                {/* Student/Staff/Admin Login Fields */}
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
                     <Mail className="w-4 h-4 inline mr-2" />
