@@ -1,4 +1,4 @@
-// frontend/src/App.jsx
+// frontend/src/App.jsx - FIXED VERSION
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import WelcomeAnimation from './components/shared/WelcomeAnimation';
@@ -65,9 +65,9 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
 
   useEffect(() => {
     if (!user) {
-      navigate('/auth');
+      navigate('/auth', { replace: true });
     } else if (allowedRoles && !allowedRoles.includes(user.role)) {
-      navigate('/');
+      navigate('/', { replace: true });
     }
   }, [user, navigate, allowedRoles]);
 
@@ -129,7 +129,7 @@ function MainApp() {
           }
         />
 
-        <Route path="*" element={<Navigate to="/" />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>
   );
