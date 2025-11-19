@@ -1,0 +1,105 @@
+/* ================================
+   PRINT STYLES FOR STUDENT FORMS
+   File: src/styles/print.css
+   ================================ */
+
+@media print {
+    /* Page settings */
+    @page {
+        size: A4 portrait;
+        margin: 15mm;
+    }
+
+    /* Reset */
+    * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        color-adjust: exact !important;
+        box-shadow: none !important;
+        text-shadow: none !important;
+    }
+
+    /* Hide everything */
+    body * {
+        visibility: hidden !important;
+    }
+
+    /* Show only target container */
+    #printable-form,
+    #printable-form * {
+        visibility: visible !important;
+    }
+
+    /* Printable container */
+    #printable-form {
+        position: absolute !important;
+        left: 0 !important;
+        top: 0 !important;
+        width: 100% !important;
+        background: white !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    /* Hide UI elements */
+    .no-print,
+    button,
+    .modal,
+    .overlay,
+    .fixed,
+    .sticky {
+        display: none !important;
+        visibility: hidden !important;
+    }
+
+    /* Images */
+    img {
+        display: block !important;
+        max-width: 100% !important;
+        height: auto !important;
+        page-break-inside: avoid !important;
+    }
+
+    /* Borders */
+    [class*="border"],
+    .border,
+    .border-b,
+    .border-t,
+    .border-l,
+    .border-r {
+        border-color: #000 !important;
+        border-style: solid !important;
+    }
+
+    /* Typography */
+    h1, h2, h3, h4, h5, h6,
+    p, span, div, li, td, th {
+        color: #000 !important;
+    }
+
+    .text-white {
+        color: #fff !important;
+    }
+
+    /* Page breaks */
+    .page-break {
+        page-break-before: always !important;
+    }
+    .page-break-after {
+        page-break-after: always !important;
+    }
+    .no-page-break {
+        page-break-inside: avoid !important;
+    }
+
+    /* Layout helpers */
+    .flex { display: flex !important; }
+    .grid { display: grid !important; }
+
+    .items-center { align-items: centre !important; }
+    .justify-center { justify-content: centre !important; }
+    .justify-between { justify-content: space-between !important; }
+
+    .grid-cols-2 { grid-template-columns: repeat(2, 1fr) !important; }
+    .grid-cols-3 { grid-template-columns: repeat(3, 1fr) !important; }
+}
