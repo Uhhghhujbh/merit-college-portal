@@ -1,14 +1,18 @@
+// frontend/src/components/student/StudentRegistrationForm.jsx - COMPLETE FIXED VERSION
 import React, { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../App';
 import { 
   Upload, X, AlertCircle, CheckCircle, MapPin, 
   User, Mail, Phone, Home, Calendar, Book,
   FileText, Save, Eye, Printer
 } from 'lucide-react';
 
-const StudentRegistrationForm = ({ navigate }) => {
+const StudentRegistrationForm = () => {
+  const navigate = useNavigate();
+  const { login } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState({
-    // Personal Details
     surname: '',
     middleName: '',
     lastName: '',
@@ -20,28 +24,16 @@ const StudentRegistrationForm = ({ navigate }) => {
     parentsPhone: '',
     studentPhone: '',
     email: '',
-    
-    // Programme Selection
     programme: '',
-    
-    // Subjects
     subjects: [],
-    
-    // Choice of Institution (for A-Level)
     university: '',
     course: '',
     polytechnic: '',
     collegeOfEducation: '',
-    
-    // Image
     photo: null,
     photoPreview: null,
-    
-    // Terms & Agreement
     termsAccepted: false,
     signature: '',
-    
-    // Location
     location: null
   });
 
@@ -49,9 +41,7 @@ const StudentRegistrationForm = ({ navigate }) => {
   const [loading, setLoading] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const fileInputRef = useRef(null);
-  const printRef = useRef(null);
 
-  // Nigerian States
   const nigerianStates = [
     'Abia', 'Adamawa', 'Akwa Ibom', 'Anambra', 'Bauchi', 'Bayelsa', 'Benue', 
     'Borno', 'Cross River', 'Delta', 'Ebonyi', 'Edo', 'Ekiti', 'Enugu', 
@@ -60,7 +50,6 @@ const StudentRegistrationForm = ({ navigate }) => {
     'Plateau', 'Rivers', 'Sokoto', 'Taraba', 'Yobe', 'Zamfara', 'FCT'
   ];
 
-  // O-Level Subjects
   const oLevelSubjects = [
     'English Language', 'Mathematics', 'Physics', 'Chemistry', 'Biology',
     'Agricultural Science', 'Economics', 'Government', 'Literature in English',
@@ -70,14 +59,12 @@ const StudentRegistrationForm = ({ navigate }) => {
     'Islamic Religious Studies', 'Fine Arts', 'Music', 'Physical Education'
   ];
 
-  // A-Level Subjects
   const aLevelSubjects = [
     'Mathematics', 'Further Mathematics', 'Physics', 'Chemistry', 'Biology',
     'Economics', 'Government', 'Geography', 'Literature in English',
     'Computer Science', 'Accounting'
   ];
 
-  // JAMB Subjects
   const jambSubjects = [
     'English Language', 'Mathematics', 'Physics', 'Chemistry', 'Biology',
     'Economics', 'Government', 'Literature in English', 'Geography',
@@ -85,7 +72,6 @@ const StudentRegistrationForm = ({ navigate }) => {
     'Islamic Religious Studies', 'Computer Studies'
   ];
 
-  // Get location on mount
   useEffect(() => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -100,9 +86,7 @@ const StudentRegistrationForm = ({ navigate }) => {
             }
           }));
         },
-        (error) => {
-          console.error('Location error:', error);
-        }
+        (error) => console.error('Location error:', error)
       );
     }
   }, []);
@@ -196,11 +180,8 @@ const StudentRegistrationForm = ({ navigate }) => {
     if (!formData.programme) newErrors.programme = 'Programme selection is required';
     
     const maxSubjects = getMaxSubjects();
-    if (formData.subjects.length < maxSubjects) {
+    if (formData.subjects.length !== maxSubjects) {
       newErrors.subjects = `Please select exactly ${maxSubjects} subjects`;
-    }
-    if (formData.subjects.length > maxSubjects) {
-      newErrors.subjects = `You can only select ${maxSubjects} subjects`;
     }
 
     setErrors(newErrors);
@@ -220,6 +201,11 @@ const StudentRegistrationForm = ({ navigate }) => {
     return Object.keys(newErrors).length === 0;
   };
 
+  // ✅ ADDED: Missing validateForm function
+  const validateForm = () => {
+    return validateStep1() && validateStep2() && validateStep3();
+  };
+
   const handleNext = () => {
     let isValid = false;
     if (currentStep === 1) isValid = validateStep1();
@@ -231,125 +217,136 @@ const StudentRegistrationForm = ({ navigate }) => {
     }
   };
 
-// Updated handleSubmit in StudentRegistrationForm.jsx
-const handleSubmit = async () => {
-  if (!validateForm()) {
-    alert('Please fill all required fields and fix errors');
-    return;
-  }
-
-  setLoading(true);
-
-  try {
-    const formDataToSend = new FormData();
-    
-    // Append all form data
-    Object.keys(formData).forEach(key => {
-      if (key === 'subjects') {
-        formDataToSend.append(key, JSON.stringify(formData[key]));
-      } else if (key === 'photo' && formData.photo) {
-        formDataToSend.append('photo', formData.photo);
-      } else {
-        formDataToSend.append(key, formData[key]);
-      }
-    });
-
-    console.log('Submitting registration...');
-
-    const response = await fetch('/api/students/register', {
-      method: 'POST',
-      body: formDataToSend,
-    });
-
-    const result = await response.json();
-
-    if (!response.ok) {
-      throw new Error(result.error || 'Registration failed');
+  const handleSubmit = async () => {
+    if (!validateStep3()) {
+      alert('Please complete all required fields');
+      return;
     }
 
-    console.log('Registration successful:', result);
+    setLoading(true);
 
-    // Store registration data temporarily
-    const registrationData = {
-      studentId: result.studentId,
-      full_name: `${formData.surname} ${formData.middleName} ${formData.lastName}`.trim(),
-      email: formData.email,
-      programme: formData.programme,
-      status: result.status || 'pending',
-      registrationDate: new Date().toISOString(),
-      ...formData
-    };
-
-    sessionStorage.setItem('pendingRegistration', JSON.stringify(registrationData));
-
-    // Auto-login after registration
     try {
-      const loginResponse = await fetch('/api/auth/student/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          identifier: formData.email,
-          password: formData.email // Using email as initial password
-        }),
+      const formDataToSend = new FormData();
+      
+      Object.keys(formData).forEach(key => {
+        if (key === 'subjects' || key === 'location') {
+          formDataToSend.append(key, JSON.stringify(formData[key]));
+        } else if (key === 'photo' && formData.photo) {
+          formDataToSend.append('photo', formData.photo);
+        } else if (formData[key] !== null && formData[key] !== '') {
+          formDataToSend.append(key, formData[key]);
+        }
       });
 
-      if (loginResponse.ok) {
-        const loginData = await loginResponse.json();
-        
-        // Store auth data
-        sessionStorage.setItem('meritToken', loginData.token);
-        sessionStorage.setItem('meritUser', JSON.stringify(loginData.user));
-        
-        // Clear pending registration
-        sessionStorage.removeItem('pendingRegistration');
-        
-        alert(`Registration Successful!\n\nYour Student ID: ${result.studentId}\nStatus: ${result.status}`);
-        navigate('/student/dashboard');
-      } else {
-        // If auto-login fails, still navigate but with pending data
-        alert(`Registration Submitted!\n\nYour Student ID: ${result.studentId}\nStatus: Pending Validation\nYou can check your status on the dashboard.`);
-        navigate('/student/dashboard');
+      console.log('Submitting registration...');
+
+      const response = await fetch('/api/students/register', {
+        method: 'POST',
+        body: formDataToSend,
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Registration failed');
       }
-    } catch (loginError) {
-      console.error('Auto-login failed:', loginError);
-      alert(`Registration Submitted!\n\nYour Student ID: ${result.studentId}\nPlease login with your email to check status.`);
-      navigate('/auth');
+
+      console.log('Registration successful:', result);
+
+      // Auto-login
+      try {
+        const loginResponse = await fetch('/api/auth/student/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            identifier: formData.email,
+            password: formData.email
+          }),
+        });
+
+        if (loginResponse.ok) {
+          const loginData = await loginResponse.json();
+          sessionStorage.setItem('meritToken', loginData.token);
+          sessionStorage.setItem('meritUser', JSON.stringify(loginData.user));
+          login(loginData.user, loginData.token);
+          
+          alert(`Registration Successful!\n\nStudent ID: ${result.studentId}\nStatus: ${result.status || 'Pending'}`);
+          navigate('/student/dashboard', { replace: true });
+        } else {
+          alert(`Registration Submitted!\n\nStudent ID: ${result.studentId}\nPlease login with your email.`);
+          navigate('/auth', { replace: true });
+        }
+      } catch (loginError) {
+        console.error('Auto-login failed:', loginError);
+        alert(`Registration Submitted!\n\nStudent ID: ${result.studentId}\nPlease login to continue.`);
+        navigate('/auth', { replace: true });
+      }
+
+    } catch (error) {
+      console.error('Registration error:', error);
+      alert(error.message || 'Registration failed. Please try again.');
+    } finally {
+      setLoading(false);
     }
+  };
 
-  } catch (error) {
-    console.error('Registration error:', error);
-    alert(error.message || 'Registration failed. Please try again.');
-  } finally {
-    setLoading(false);
-  }
-};
+  // ✅ FIXED: Proper handlePrint function
+  const handlePrint = () => {
+    const printStyles = document.createElement('style');
+    printStyles.id = 'print-styles-temp';
+    printStyles.textContent = `
+      @media print {
+        @page { 
+          size: A4; 
+          margin: 15mm; 
+        }
+        body * { 
+          visibility: hidden !important; 
+        }
+        #printable-form, 
+        #printable-form * { 
+          visibility: visible !important; 
+        }
+        #printable-form { 
+          position: absolute !important; 
+          left: 0 !important; 
+          top: 0 !important; 
+          width: 100% !important;
+          background: white !important;
+        }
+        .no-print { 
+          display: none !important; 
+        }
+        * { 
+          -webkit-print-color-adjust: exact !important; 
+          print-color-adjust: exact !important; 
+        }
+        img { 
+          display: block !important; 
+          max-width: 100% !important;
+          page-break-inside: avoid !important;
+        }
+        .border, .border-b, .border-t, .border-l, .border-r,
+        [class*="border-"] {
+          border-color: #000 !important;
+          border-style: solid !important;
+        }
+      }
+    `;
+    
+    document.head.appendChild(printStyles);
+    
+    setTimeout(() => {
+      window.print();
+      setTimeout(() => {
+        const tempStyles = document.getElementById('print-styles-temp');
+        if (tempStyles) {
+          document.head.removeChild(tempStyles);
+        }
+      }, 100);
+    }, 500);
+  };
 
- const handlePrint = () => {
-  // Ensure the print CSS is loaded
-  const printStyles = document.createElement('style');
-  printStyles.textContent = `
-    @media print {
-      @page { size: A4; margin: 15mm; }
-      body * { visibility: hidden; }
-      #printable-form, #printable-form * { visibility: visible; }
-      #printable-form { position: absolute; left: 0; top: 0; width: 100%; background: white; }
-      .no-print { display: none !important; }
-      * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-    }
-  `;
-  document.head.appendChild(printStyles);
-  
-  // Trigger print
-  setTimeout(() => {
-    window.print();
-    // Clean up
-    document.head.removeChild(printStyles);
-  }, 100);
-};
-
-  // Render Step 1: Personal Details
   const renderStep1 = () => (
     <div className="space-y-6">
       <div className="flex items-center gap-3 mb-6">
@@ -362,7 +359,6 @@ const handleSubmit = async () => {
         </div>
       </div>
 
-      {/* Photo Upload */}
       <div className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-xl p-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
@@ -370,10 +366,7 @@ const handleSubmit = async () => {
             <h3 className="font-semibold text-gray-900">Upload Passport Photo</h3>
           </div>
           {formData.photoPreview && (
-            <button
-              onClick={removeImage}
-              className="text-red-500 hover:text-red-700 transition"
-            >
+            <button onClick={removeImage} className="text-red-500 hover:text-red-700 transition">
               <X className="w-5 h-5" />
             </button>
           )}
@@ -396,9 +389,7 @@ const handleSubmit = async () => {
               <Upload className="w-5 h-5" />
               Choose Photo
             </button>
-            <p className="text-sm text-gray-600 mt-2">
-              JPG, JPEG, PNG • Max 250KB
-            </p>
+            <p className="text-sm text-gray-600 mt-2">JPG, JPEG, PNG • Max 250KB</p>
           </div>
         )}
 
@@ -418,7 +409,6 @@ const handleSubmit = async () => {
         )}
       </div>
 
-      {/* Name Fields */}
       <div className="grid md:grid-cols-3 gap-4">
         <Input
           label="Surname"
@@ -444,7 +434,6 @@ const handleSubmit = async () => {
         />
       </div>
 
-      {/* Gender & DOB */}
       <div className="grid md:grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -483,7 +472,6 @@ const handleSubmit = async () => {
         />
       </div>
 
-      {/* State & LGA */}
       <div className="grid md:grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -519,7 +507,6 @@ const handleSubmit = async () => {
         />
       </div>
 
-      {/* Address */}
       <div>
         <label className="block text-sm font-semibold text-gray-700 mb-2">
           Permanent Home Address <span className="text-red-500">*</span>
@@ -541,7 +528,6 @@ const handleSubmit = async () => {
         )}
       </div>
 
-      {/* Contact Information */}
       <div className="grid md:grid-cols-2 gap-4">
         <Input
           label="Parent's Phone Number"
@@ -587,7 +573,6 @@ const handleSubmit = async () => {
     </div>
   );
 
-  // Render Step 2: Programme & Subjects
   const renderStep2 = () => (
     <div className="space-y-6">
       <div className="flex items-center gap-3 mb-6">
@@ -600,7 +585,6 @@ const handleSubmit = async () => {
         </div>
       </div>
 
-      {/* Programme Selection */}
       <div>
         <label className="block text-sm font-semibold text-gray-700 mb-3">
           Select Programme <span className="text-red-500">*</span>
@@ -641,7 +625,6 @@ const handleSubmit = async () => {
         )}
       </div>
 
-      {/* Subject Selection */}
       {formData.programme && (
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-3">
@@ -702,7 +685,6 @@ const handleSubmit = async () => {
         </div>
       )}
 
-      {/* Choice of Institution (A-Level only) */}
       {formData.programme === 'A-Level' && (
         <div className="space-y-4 pt-6 border-t border-gray-200">
           <h3 className="font-bold text-gray-900">Choice of Institution</h3>
@@ -739,7 +721,6 @@ const handleSubmit = async () => {
     </div>
   );
 
-  // Render Step 3: Terms & Signature
   const renderStep3 = () => (
     <div className="space-y-6">
       <div className="flex items-center gap-3 mb-6">
@@ -752,7 +733,6 @@ const handleSubmit = async () => {
         </div>
       </div>
 
-      {/* Terms and Conditions */}
       <div className="bg-gray-50 border border-gray-300 rounded-xl p-6 max-h-96 overflow-y-auto">
         <h3 className="font-bold text-gray-900 mb-4">Merit College Terms and Conditions</h3>
         
@@ -806,7 +786,6 @@ const handleSubmit = async () => {
         </div>
       </div>
 
-      {/* Accept Terms Checkbox */}
       <div className="flex items-start gap-3">
         <input
           type="checkbox"
@@ -829,7 +808,6 @@ const handleSubmit = async () => {
         </p>
       )}
 
-      {/* Digital Signature */}
       <div>
         <label className="block text-sm font-semibold text-gray-700 mb-2">
           Digital Signature <span className="text-red-500">*</span>
@@ -846,7 +824,6 @@ const handleSubmit = async () => {
         </p>
       </div>
 
-      {/* Form Fee Information */}
       <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
         <h3 className="font-bold text-gray-900 mb-3">Payment Information</h3>
         <div className="space-y-2 text-sm">
@@ -871,7 +848,6 @@ const handleSubmit = async () => {
         </div>
       </div>
 
-      {/* Preview Button */}
       <button
         onClick={() => setShowPreview(true)}
         className="w-full py-3 bg-gray-100 text-gray-900 rounded-lg font-semibold hover:bg-gray-200 transition flex items-center justify-center gap-2"
@@ -882,7 +858,6 @@ const handleSubmit = async () => {
     </div>
   );
 
-  // Navigation Buttons
   const renderNavigation = () => (
     <div className="flex justify-between items-center pt-6 border-t border-gray-200">
       {currentStep > 1 ? (
@@ -930,98 +905,86 @@ const handleSubmit = async () => {
     </div>
   );
 
-  // Preview Modal with Print Styles
   const renderPreviewModal = () => {
     if (!showPreview) return null;
 
     return (
       <>
-       <style>{`
-  @media print {
-    @page {
-      size: A4;
-      margin: 15mm;
-    }
-    
-    body * {
-      visibility: hidden;
-    }
-    
-    #printable-form,
-    #printable-form * {
-      visibility: visible;
-    }
-    
-    #printable-form {
-      position: absolute;
-      left: 0;
-      top: 0;
-      width: 100%;
-      background: white;
-    }
-    
-    .no-print {
-      display: none !important;
-    }
-    
-    /* Ensure images print */
-    img {
-      max-width: 100%;
-      page-break-inside: avoid;
-    }
-    
-    /* Page breaks */
-    .page-break {
-      page-break-before: always;
-    }
-    
-    /* Borders and backgrounds */
-    * {
-      -webkit-print-color-adjust: exact !important;
-      print-color-adjust: exact !important;
-    }
-  }
-`}</style>
+        <style>{`
+          @media print {
+            @page {
+              size: A4;
+              margin: 15mm;
+            }
+            body * {
+              visibility: hidden;
+            }
+            #printable-form,
+            #printable-form * {
+              visibility: visible;
+            }
+            #printable-form {
+              position: absolute;
+              left: 0;
+              top: 0;
+              width: 100%;
+              background: white;
+            }
+            .no-print {
+              display: none !important;
+            }
+            img {
+              max-width: 100%;
+              page-break-inside: avoid;
+            }
+            .page-break {
+              page-break-before: always;
+            }
+            * {
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+            }
+          }
+        `}</style>
         
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto no-print">
           <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             <div id="printable-form" className="p-8" style={{ width: '210mm' }}>
-             {/* Header - FIXED */}
-<div className="flex items-center justify-between mb-8 pb-6 border-b-2 border-gray-900">
-  <img 
-    src="/meritlogo.jpg" 
-    alt="Merit College" 
-    className="w-20 h-20 rounded-full object-cover"
-    onError={(e) => {
-      e.target.style.display = 'none';
-      e.target.nextElementSibling.style.display = 'flex';
-    }}
-  />
-  <div className="w-20 h-20 bg-gray-900 rounded-full flex items-center justify-center text-white text-2xl font-bold" style={{ display: 'none' }}>
-    MC
-  </div>
-  
-  <div className="text-center flex-1 px-4">
-    <h1 className="text-2xl font-bold text-gray-900 uppercase">
-      MERIT COLLEGE OF ADVANCED STUDIES
-    </h1>
-    <p className="text-sm text-gray-600 mt-1">KNOWLEDGE FOR ADVANCEMENT</p>
-    <p className="text-xs text-gray-500 mt-1">
-      Office: 32, Ansarul Ogidi, beside Conoil filling station, Ilorin, Kwara State
-    </p>
-  </div>
-  
-  {formData.photoPreview && (
-    <img 
-      src={formData.photoPreview} 
-      alt="Student" 
-      className="w-20 h-20 object-cover border-2 border-gray-900 rounded"
-    />
-  )}
-</div>
+              <div className="flex items-center justify-between mb-8 pb-6 border-b-2 border-gray-900">
+                <img 
+                  src="/meritlogo.jpg" 
+                  alt="Merit College" 
+                  className="w-20 h-20 rounded-full object-cover"
+                  onError={(e) => {
+                    e.target.style.display = 'none';
+                    e.target.nextElementSibling.style.display = 'flex';
+                  }}
+                />
+                <div className="w-20 h-20 bg-gray-900 rounded-full flex items-center justify-center text-white text-2xl font-bold" style={{ display: 'none' }}>
+                  MC
+                </div>
+                
+                <div className="text-center flex-1 px-4">
+                  <h1 className="text-2xl font-bold text-gray-900 uppercase">
+                    MERIT COLLEGE OF ADVANCED STUDIES
+                  </h1>
+                  <p className="text-sm text-gray-600 mt-1">KNOWLEDGE FOR ADVANCEMENT</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Office: 32, Ansarul Ogidi, beside Conoil filling station, Ilorin, Kwara State
+                  </p>
+                </div>
+                
+                {formData.photoPreview && (
+                  <img 
+                    src={formData.photoPreview} 
+                    alt="Student" 
+                    className="w-20 h-20 object-cover border-2 border-gray-900 rounded"
+                  />
+                )}
+              </div>
+
               <h2 className="text-xl font-bold text-center text-gray-900 mb-6">EXAMINATION ENTRY DETAILS</h2>
 
-              {/* Personal Details */}
               <div className="mb-6">
                 <h3 className="font-bold text-gray-900 mb-3 bg-gray-100 px-3 py-2 rounded">(A) PERSONAL DETAILS</h3>
                 
@@ -1089,7 +1052,6 @@ const handleSubmit = async () => {
                 </div>
               </div>
 
-              {/* Programme Selection */}
               <div className="mb-6">
                 <h3 className="font-bold text-gray-900 mb-3 bg-gray-100 px-3 py-2 rounded">(B) PROGRAMME SELECTION</h3>
                 <div className="text-sm space-y-2">
@@ -1100,7 +1062,6 @@ const handleSubmit = async () => {
                 </div>
               </div>
 
-              {/* Subjects */}
               <div className="mb-6">
                 <h3 className="font-bold text-gray-900 mb-3 bg-gray-100 px-3 py-2 rounded">
                   (C) {formData.programme === 'O-Level' ? 'AVAILABLE O-LEVEL COURSES' : 
@@ -1116,7 +1077,6 @@ const handleSubmit = async () => {
                 </div>
               </div>
 
-              {/* Choice of Institution (A-Level) */}
               {formData.programme === 'A-Level' && (formData.university || formData.course || formData.polytechnic || formData.collegeOfEducation) && (
                 <div className="mb-6">
                   <h3 className="font-bold text-gray-900 mb-3 bg-gray-100 px-3 py-2 rounded">(D) CHOICE OF INSTITUTION</h3>
@@ -1149,7 +1109,6 @@ const handleSubmit = async () => {
                 </div>
               )}
 
-              {/* Attestation */}
               <div className="mb-6">
                 <h3 className="font-bold text-gray-900 mb-3 bg-gray-100 px-3 py-2 rounded">
                   {formData.programme === 'A-Level' && (formData.university || formData.course) ? '(E) ATTESTATION' : '(D) ATTESTATION'}
@@ -1172,7 +1131,6 @@ const handleSubmit = async () => {
                 </div>
               </div>
 
-              {/* For Office Use Only */}
               <div className="mt-8 p-4 bg-gray-100 rounded">
                 <h3 className="font-bold text-gray-900 mb-3">
                   {formData.programme === 'A-Level' && (formData.university || formData.course) ? '(F) FOR OFFICE USE ONLY' : '(E) FOR OFFICE USE ONLY'}
@@ -1190,7 +1148,6 @@ const handleSubmit = async () => {
               </div>
             </div>
 
-            {/* Modal Actions */}
             <div className="sticky bottom-0 bg-white border-t border-gray-200 p-4 flex justify-end gap-3 no-print">
               <button
                 onClick={() => setShowPreview(false)}
@@ -1215,7 +1172,6 @@ const handleSubmit = async () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-8 px-4">
       <div className="max-w-4xl mx-auto">
-        {/* Progress Steps */}
         <div className="mb-8">
           <div className="flex items-center justify-between">
             {[1, 2, 3].map(step => (
@@ -1246,7 +1202,6 @@ const handleSubmit = async () => {
           </div>
         </div>
 
-        {/* Form Card */}
         <div className="bg-white rounded-xl shadow-xl p-8">
           {currentStep === 1 && renderStep1()}
           {currentStep === 2 && renderStep2()}
@@ -1255,7 +1210,6 @@ const handleSubmit = async () => {
           {renderNavigation()}
         </div>
 
-        {/* Help Text */}
         <div className="mt-6 text-center text-sm text-gray-600">
           <p>Need help? Contact us at <a href="mailto:info@meritcollege.edu.ng" className="text-gray-900 font-semibold hover:underline">info@meritcollege.edu.ng</a></p>
         </div>
@@ -1266,7 +1220,6 @@ const handleSubmit = async () => {
   );
 };
 
-// Reusable Input Component
 const Input = ({ label, type = 'text', value, onChange, placeholder, required = false, error = '' }) => {
   return (
     <div>
